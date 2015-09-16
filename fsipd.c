@@ -191,7 +191,7 @@ daemon_start()
 			return (EXIT_FAILURE);
 		}
 
-		if ((client = fdopen(c, "w")) == NULL) {
+		if ((client = fdopen(c, "r")) == NULL) {
 			perror("fdopen");
 			return (EXIT_FAILURE);
 		}
