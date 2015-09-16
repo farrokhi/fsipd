@@ -88,6 +88,11 @@ void
 process_request(char *str)
 {
 	/* check input str for SIP requests */
+	/*
+	 * TODO: log connection info including SRC/DST IP, SRC/DST PORT,
+	 * Timestamp and Message Type in CSV Format
+	 */
+
 	syslog(LOG_ALERT, "incoming packet: %s\n", str);
 }
 
@@ -115,7 +120,6 @@ daemon_start()
 		}
 		warn("Cannot open or create pidfile.");
 	}
-
 	/* setup socket */
 	if ((proto_tcp = getprotobyname("tcp")) == NULL)
 		return -1;
@@ -126,15 +130,13 @@ daemon_start()
 	sa.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-	    perror("socket");
-	    return EXIT_FAILURE;
+		perror("socket");
+		return EXIT_FAILURE;
 	}
-
 	if (bind(s, (struct sockaddr *)&sa, sizeof sa) < 0) {
-        	perror("bind");
-        	return EXIT_FAILURE;
-    	}
-
+		perror("bind");
+		return EXIT_FAILURE;
+	}
 	/* start daemonizing */
 	curPID = fork();
 
@@ -190,12 +192,10 @@ daemon_start()
 			perror("accept");
 			return (EXIT_FAILURE);
 		}
-
 		if ((client = fdopen(c, "r")) == NULL) {
 			perror("fdopen");
 			return (EXIT_FAILURE);
 		}
-
 		fgets(inputstr, sizeof(inputstr), client);
 
 		process_request(inputstr);
