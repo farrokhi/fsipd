@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <err.h>
 #include <errno.h>
@@ -88,12 +89,9 @@ void
 process_request(char *str)
 {
 	/* check input str for SIP requests */
-	/*
-	 * TODO: log connection info including SRC/DST IP, SRC/DST PORT,
-	 * Timestamp and Message Type in CSV Format
-	 */
 
-	syslog(LOG_ALERT, "incoming packet: %s\n", str);
+	syslog(LOG_ALERT, "sip: %s, sport: %d, payload: \"%s\"\n",
+		inet_ntoa(sa.sin_addr), ntohs(sa.sin_port), str);
 }
 
 /*
