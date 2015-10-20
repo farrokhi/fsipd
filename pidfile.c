@@ -125,7 +125,8 @@ struct pidfh *pidfile_open(const char *path, mode_t mode, pid_t *pidptr)
 	struct pidfh *pfh;
 	struct timespec rqtp;
 	struct stat sb;
-	int len, fd, error, count;
+	size_t len;
+	int  fd, error, count;
 
 	pfh = malloc(sizeof(*pfh));
 	if (pfh == NULL) return NULL;
