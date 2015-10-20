@@ -45,7 +45,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <syslog.h>
-#include <libutil.h>
+#include "pidfile.h"
 
 #define	PORT 5060
 #define BACKLOG 1024
@@ -88,6 +88,7 @@ void
 process_request(char *str)
 {
 	/* check input str for SIP requests */
+
 	/*
 	 * TODO: log connection info including SRC/DST IP, SRC/DST PORT,
 	 * Timestamp and Message Type in CSV Format
@@ -118,7 +119,7 @@ daemon_start()
 		if (errno == EEXIST) {
 			errx(EXIT_FAILURE, "Daemon already running, pid: %jd.", (intmax_t)otherpid);
 		}
-		warn("Cannot open or create pidfile.");
+		err(EXIT_FAILURE,"Cannot open or create pidfile");
 	}
 	/* setup socket */
 	if ((proto_tcp = getprotobyname("tcp")) == NULL)
