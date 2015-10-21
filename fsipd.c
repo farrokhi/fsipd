@@ -57,7 +57,7 @@
 struct pidfh *pfh;
 struct sockaddr_in sa;
 struct protoent *proto_tcp, *proto_udp;
-log_t *lh;
+log_t  *lfh;
 
 /*
  * Prepare for a clean shutdown
@@ -66,6 +66,7 @@ void
 daemon_shutdown()
 {
 	pidfile_remove(pfh);
+	log_close(lfh);
 }
 
 /*
@@ -77,7 +78,7 @@ signal_handler(int sig)
 	switch (sig) {
 
 	case SIGHUP:
-		log_reopen(&lh);
+		log_reopen(&lfh);
 		break;
 	case SIGINT:
 	case SIGTERM:
@@ -92,9 +93,9 @@ signal_handler(int sig)
 void
 process_request(char *str)
 {
-	/* check input str for SIP requests */
+	/* TODO: change format to CSV */
 
-	syslog(LOG_ALERT, "sip: %s, sport: %d, payload: \"%s\"\n",
+	log_tsprintf(lfh, "sip: %s, sport: %d, payload: \"%s\"\n",
 	    inet_ntoa(sa.sin_addr), ntohs(sa.sin_port), str);
 }
 
@@ -116,11 +117,17 @@ daemon_start()
 	/* Check if we can acquire the pid file */
 	pfh = pidfile_open(NULL, 0600, &otherpid);
 
+
 	if (pfh == NULL) {
 		if (errno == EEXIST) {
 			errx(EXIT_FAILURE, "Daemon already running, pid: %jd.", (intmax_t)otherpid);
 		}
 		err(EXIT_FAILURE, "Cannot open or create pidfile");
+	}
+	/* open a log file in current directory */
+	lfh = log_open(NULL, 0644);
+	if ((lfh = log_open("test.log", 0600)) == NULL) {
+		err(EXIT_FAILURE, "Cannot open log file");
 	}
 	/* setup socket */
 	if ((proto_tcp = getprotobyname("tcp")) == NULL)
@@ -179,6 +186,10 @@ daemon_start()
 
 	/* create new session and process group */
 	setsid();
+
+	syslog(LOG_ALERT, "%s started with PID %d\n",
+	    getprogname(), getpid());
+
 
 	/* persist pid */
 	pidfile_write(pfh);
