@@ -4,13 +4,17 @@ LIB=-L$(PREFIX)/lib -lpidutil
 CFLAGS=-Wall -Wextra -g -O2 -pipe -funroll-loops -ffast-math -fno-strict-aliasing
 CC?=cc
 
-PROGS = fsipd
+PROGS = fsipd logfile_test
+CFILES = fsipd.c logfile.c
 
-all: $(PROGS)
+all: fsipd
 
-fsipd: fsipd.c
-	$(CC) $(CFLAGS) $(INC) $(LIB) fsipd.c -o fsipd
+fsipd: $(CFILES)
+	$(CC) $(CFLAGS) $(INC) $(LIB) $(CFILES) -o fsipd
+
+test: logfile.c logfile_test.c
+	$(CC) $(CFLAGS) $(INC) $(LIB) logfile.c logfile_test.c -o logfile_test
 
 clean:
-	rm -f *.o *.a a.out core temp.* $(LIBPIDFILE) $(PROGS)
+	rm -f *.BAK *.log *.o *.a a.out core temp.* $(LIBPIDFILE) $(PROGS)
 	rm -fr *.dSYM

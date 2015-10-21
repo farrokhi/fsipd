@@ -48,6 +48,8 @@
 #include <syslog.h>
 #include <pidutil.h>
 
+#include "logfile.h"
+
 #define	PORT 5060
 #define BACKLOG 1024
 
@@ -55,6 +57,7 @@
 struct pidfh *pfh;
 struct sockaddr_in sa;
 struct protoent *proto_tcp, *proto_udp;
+log_t *lh;
 
 /*
  * Prepare for a clean shutdown
@@ -74,6 +77,7 @@ signal_handler(int sig)
 	switch (sig) {
 
 	case SIGHUP:
+		log_reopen(&lh);
 		break;
 	case SIGINT:
 	case SIGTERM:
@@ -91,7 +95,7 @@ process_request(char *str)
 	/* check input str for SIP requests */
 
 	syslog(LOG_ALERT, "sip: %s, sport: %d, payload: \"%s\"\n",
-		inet_ntoa(sa.sin_addr), ntohs(sa.sin_port), str);
+	    inet_ntoa(sa.sin_addr), ntohs(sa.sin_port), str);
 }
 
 /*
@@ -116,7 +120,7 @@ daemon_start()
 		if (errno == EEXIST) {
 			errx(EXIT_FAILURE, "Daemon already running, pid: %jd.", (intmax_t)otherpid);
 		}
-		err(EXIT_FAILURE,"Cannot open or create pidfile");
+		err(EXIT_FAILURE, "Cannot open or create pidfile");
 	}
 	/* setup socket */
 	if ((proto_tcp = getprotobyname("tcp")) == NULL)
