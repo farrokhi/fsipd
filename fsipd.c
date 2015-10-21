@@ -46,7 +46,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <syslog.h>
-#include "pidfile.h"
+#include <pidutil.h>
 
 #define	PORT 5060
 #define BACKLOG 1024

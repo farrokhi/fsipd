@@ -1,22 +1,14 @@
 PREFIX?=/usr/local
 INC=-I$(PREFIX)/include
-LIB=-L$(PREFIX)/lib -L. -lpidfile
+LIB=-L$(PREFIX)/lib -lpidutil
 CFLAGS=-Wall -Wextra -g -O2 -pipe -funroll-loops -ffast-math -fno-strict-aliasing
 CC?=cc
-AR?=ar
-RANLIB?=ranlib
 
 PROGS = fsipd
-LIBPIDFILE = libpidfile.a
-OBJS = pidfile.o
 
-all: $(LIBPIDFILE) $(PROGS)
+all: $(PROGS)
 
-$(LIBPIDFILE) : $(OBJS)
-	$(AR) rv $(LIBPIDFILE) $?
-	$(RANLIB) $(LIBPIDFILE)
-
-fsipd: fsipd.c $(LIBPIDFILE)
+fsipd: fsipd.c
 	$(CC) $(CFLAGS) $(INC) $(LIB) fsipd.c -o fsipd
 
 clean:
