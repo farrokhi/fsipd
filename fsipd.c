@@ -95,7 +95,7 @@ process_request(char *str)
 {
 	/* TODO: change format to CSV */
 
-	log_tsprintf(lfh, "sip: %s, sport: %d, payload: \"%s\"\n",
+	log_tsprintf(lfh, "sip: %s, sport: %d, payload: \"%s\"",
 	    inet_ntoa(sa.sin_addr), ntohs(sa.sin_port), str);
 }
 
