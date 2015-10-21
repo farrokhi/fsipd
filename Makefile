@@ -3,7 +3,7 @@ INC=-I$(PREFIX)/include
 LIB=-L$(PREFIX)/lib -L. -lpidfile
 CFLAGS=-Wall -Wextra -g -O2 -pipe -funroll-loops -ffast-math -fno-strict-aliasing
 CC?=cc
-AR?=AR
+AR?=ar
 RANLIB?=ranlib
 
 PROGS = fsipd
