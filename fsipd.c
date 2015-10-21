@@ -125,8 +125,7 @@ daemon_start()
 		err(EXIT_FAILURE, "Cannot open or create pidfile");
 	}
 	/* open a log file in current directory */
-	lfh = log_open(NULL, 0644);
-	if ((lfh = log_open("test.log", 0600)) == NULL) {
+	if ((lfh = log_open(NULL, 0644)) == NULL) {
 		err(EXIT_FAILURE, "Cannot open log file");
 	}
 	/* setup socket */
