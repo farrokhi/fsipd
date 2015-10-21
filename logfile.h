@@ -40,6 +40,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
 
 #define LOGPATH "/var/log"
 #define MAX_MSG_SIZE 65536
@@ -58,5 +59,6 @@ bool	log_isopen(const log_t *log);
 bool	log_verify(const log_t *log);
 void	log_reopen(log_t **log);
 void	log_printf(const log_t *log, const char *format,...);
+void	log_tsprintf(const log_t *log, const char *format,...);
 
 #endif					/* _LOGFILE_H */

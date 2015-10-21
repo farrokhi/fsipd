@@ -98,21 +98,46 @@ log_reopen(log_t **log)
 void
 log_printf(const log_t *log, const char *format,...)
 {
+	if (!log_isopen(log))
+		return;
+
 	va_list args;
 	char *message;
+	char *newline = "\n";
 
-	/*
-	 * todo: add timestamp and \n example: "Oct 21 13:46:35 %s\n"
-	 */
+	va_start(args, format);
+	vasprintf(&message, format, args);
+	va_end(args);
 
-	if (log_isopen(log)) {
+	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
+	write(log->fd, newline, sizeof(*newline));
+}
 
-		va_start(args, format);
-		vasprintf(&message, format, args);
-		va_end(args);
+void
+log_tsprintf(const log_t *log, const char *format,...)
+{
+	if (!log_isopen(log))
+		return;
 
-		write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
-	}
+	va_list args;
+	char *message;
+	char s_time[30];
+	time_t now;
+	struct tm *ltime;
+	size_t tsize;
+	char *newline = "\n";
+
+	va_start(args, format);
+	vasprintf(&message, format, args);
+	va_end(args);
+
+	now = time(NULL);
+	ltime = localtime(&now);
+	tsize = strftime(s_time, sizeof(s_time), "%Y-%m-%d %T %Z - ", ltime);
+
+	write(log->fd, s_time, tsize);
+	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
+	write(log->fd, newline, sizeof(*newline));
 }
 
 bool
