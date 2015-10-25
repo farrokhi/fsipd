@@ -16,5 +16,5 @@ test: logfile.c logfile_test.c
 	$(CC) $(CFLAGS) $(INC) $(LIB) logfile.c logfile_test.c -o logfile_test
 
 clean:
-	rm -f *.BAK *.log *.o *.a a.out core temp.* $(LIBPIDFILE) $(PROGS)
+	rm -f *.BAK *.log *.o *.a a.out core temp.* $(PROGS)
 	rm -fr *.dSYM

@@ -46,6 +46,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <pthread.h>
 #include <pidutil.h>
 
 #include "logfile.h"
@@ -55,9 +56,27 @@
 
 /* Globals */
 struct pidfh *pfh;
-struct sockaddr_in sa;
+struct sockaddr_in u_sa;
 struct protoent *proto_tcp, *proto_udp;
 log_t  *lfh;
+
+/* Interface */
+
+void   *tcp_handler(void *args);
+void   *udp_handler(void *args);
+
+/*
+ * remove training newline character from string
+ */
+void
+chomp(char *s)
+{
+	char *p;
+
+	while (NULL != s && NULL != (p = strrchr(s, '\n'))) {
+		*p = '\0';
+	}
+}
 
 /*
  * Prepare for a clean shutdown
@@ -91,12 +110,13 @@ signal_handler(int sig)
 }
 
 void
-process_request(char *str)
+process_request(const struct sockaddr_in *sa, char *str)
 {
 	/* TODO: change format to CSV */
 
+	chomp(str);
 	log_tsprintf(lfh, "sip: %s, sport: %d, payload: \"%s\"",
-	    inet_ntoa(sa.sin_addr), ntohs(sa.sin_port), str);
+	    inet_ntoa(sa->sin_addr), ntohs(sa->sin_port), str);
 }
 
 /*
@@ -109,14 +129,10 @@ daemon_start()
 	sigset_t sig_set;
 	pid_t otherpid;
 	int curPID;
-	register int s, c;
-	unsigned int b;
-	FILE *client;
-	char inputstr[8192];
+	pthread_t tcp_thread, udp_thread;
 
 	/* Check if we can acquire the pid file */
 	pfh = pidfile_open(NULL, 0600, &otherpid);
-
 
 	if (pfh == NULL) {
 		if (errno == EEXIST) {
@@ -127,23 +143,6 @@ daemon_start()
 	/* open a log file in current directory */
 	if ((lfh = log_open(NULL, 0644)) == NULL) {
 		err(EXIT_FAILURE, "Cannot open log file");
-	}
-	/* setup socket */
-	if ((proto_tcp = getprotobyname("tcp")) == NULL)
-		return -1;
-
-	bzero(&sa, sizeof(sa));
-	sa.sin_port = htons(PORT);
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("socket");
-		return EXIT_FAILURE;
-	}
-	if (bind(s, (struct sockaddr *)&sa, sizeof sa) < 0) {
-		perror("bind");
-		return EXIT_FAILURE;
 	}
 	/* start daemonizing */
 	curPID = fork();
@@ -193,29 +192,70 @@ daemon_start()
 	/* persist pid */
 	pidfile_write(pfh);
 
-	/* TODO: Network Logic Here */
+	/* Create TCP and UDP listener threads */
+	pthread_create(&tcp_thread, NULL, tcp_handler, NULL);
+	pthread_create(&udp_thread, NULL, udp_handler, NULL);
 
-	listen(s, BACKLOG);
+	/*
+	 * Wait until first thread terminates, which normally shouldn't ever
+	 * happen
+	 */
+
+	pthread_join(tcp_thread, NULL);
+
+	return (EXIT_SUCCESS);
+}
+
+void   *
+tcp_handler(void *args)
+{
+	unsigned int b;
+	int c, t_sockfd;
+	struct sockaddr_in t_sa;
+	FILE *client;
+	char inputstr[8192];
+
+	/* setup TCP socket */
+	if ((proto_tcp = getprotobyname("tcp")) == NULL)
+		pthread_exit(NULL);
+
+	bzero(&t_sa, sizeof(t_sa));
+	t_sa.sin_port = htons(PORT);
+	t_sa.sin_family = AF_INET;
+	t_sa.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	if ((t_sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("socket");
+		pthread_exit(NULL);
+	}
+	if (bind(t_sockfd, (struct sockaddr *)&t_sa, sizeof t_sa) < 0) {
+		perror("bind");
+		pthread_exit(NULL);
+	}
+	listen(t_sockfd, BACKLOG);
+
 
 	while (1) {
-
-		b = sizeof(sa);
-		if ((c = accept(s, (struct sockaddr *)&sa, &b)) < 0) {
+		b = sizeof(t_sa);
+		if ((c = accept(t_sockfd, (struct sockaddr *)&t_sa, &b)) < 0) {
 			perror("accept");
-			return (EXIT_FAILURE);
+			pthread_exit(NULL);
 		}
 		if ((client = fdopen(c, "r")) == NULL) {
 			perror("fdopen");
-			return (EXIT_FAILURE);
+			pthread_exit(NULL);
 		}
 		fgets(inputstr, sizeof(inputstr), client);
-
-		process_request(inputstr);
-
+		process_request(&t_sa, inputstr);
 		fclose(client);
 	}
+	return (args);
+}
 
-	return (EXIT_SUCCESS);
+void   *
+udp_handler(void *args)
+{
+	return (args);			/* mute the compiler warning */
 }
 
 int
