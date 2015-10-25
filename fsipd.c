@@ -114,13 +114,27 @@ signal_handler(int sig)
 }
 
 void
-process_request(const struct sockaddr_in *sa, char *str)
+process_request(const struct sockaddr_in *sa, int type, char *str)
 {
-	/* TODO: change format to CSV */
+	char *s_types[] = {"TCP", "UDP", "RAW", "Unknown"};
+	char *ptype;
+
+	switch (type) {
+		case SOCK_STREAM:
+			ptype = s_types[0];
+			break;
+		case SOCK_DGRAM:
+			ptype = s_types[1];
+			break;
+		case SOCK_RAW:
+			ptype = s_types[2];
+		default:
+			ptype = s_types[3];;
+	}
 
 	chomp(str);
-	log_tsprintf(lfh, "sip: %s, sport: %d, payload: \"%s\"",
-	    inet_ntoa(sa->sin_addr), ntohs(sa->sin_port), str);
+	log_printf(lfh, "%ld,%s,%s,%d,\"%s\"",
+	    time(NULL), ptype, inet_ntoa(sa->sin_addr), ntohs(sa->sin_port), str);
 }
 
 /*
@@ -145,7 +159,7 @@ daemon_start()
 		err(EXIT_FAILURE, "Cannot open or create pidfile");
 	}
 	/* open a log file in current directory */
-	if ((lfh = log_open(NULL, 0644)) == NULL) {
+	if ((lfh = log_open("fsipd.log", 0644)) == NULL) {
 		err(EXIT_FAILURE, "Cannot open log file");
 	}
 	/* setup TCP socket */
@@ -270,7 +284,7 @@ tcp_handler(void *args)
 		}
 		bzero(str, sizeof(str));/* just in case */
 		fgets(str, sizeof(str), client);
-		process_request(&t_other, str);
+		process_request(&t_other, SOCK_STREAM, str);
 		fclose(client);
 	}
 	return (args);			/* mute the compiler warning */
@@ -287,7 +301,7 @@ udp_handler(void *args)
 	sa_len = sizeof(u_other);
 	while (1) {
 		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
-			process_request(&u_other, str);
+			process_request(&u_other, SOCK_DGRAM, str);
 		} 
 	}
 
