@@ -8,7 +8,7 @@ fsipd is a minimal SIP honeypot. It listens on TCP/UDP 5060 and logs all incomin
 
 Incoming packets are logged in CSV format in "fsipd.log". Log format is described below:
 
-`epoch, protocol, src ip, src port, "message"`
+`epoch timestamp, protocol, src ip, src port, "message"`
 
 example:
 

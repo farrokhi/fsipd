@@ -128,6 +128,7 @@ process_request(const struct sockaddr_in *sa, int type, char *str)
 		break;
 	case SOCK_RAW:
 		ptype = s_types[2];
+		break;
 	default:
 		ptype = s_types[3];;
 	}
