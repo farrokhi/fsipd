@@ -120,16 +120,16 @@ process_request(const struct sockaddr_in *sa, int type, char *str)
 	char *ptype;
 
 	switch (type) {
-		case SOCK_STREAM:
-			ptype = s_types[0];
-			break;
-		case SOCK_DGRAM:
-			ptype = s_types[1];
-			break;
-		case SOCK_RAW:
-			ptype = s_types[2];
-		default:
-			ptype = s_types[3];;
+	case SOCK_STREAM:
+		ptype = s_types[0];
+		break;
+	case SOCK_DGRAM:
+		ptype = s_types[1];
+		break;
+	case SOCK_RAW:
+		ptype = s_types[2];
+	default:
+		ptype = s_types[3];;
 	}
 
 	chomp(str);
@@ -302,7 +302,7 @@ udp_handler(void *args)
 	while (1) {
 		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
 			process_request(&u_other, SOCK_DGRAM, str);
-		} 
+		}
 	}
 
 	return (args);			/* mute the compiler warning */
