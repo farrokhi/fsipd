@@ -70,16 +70,30 @@ void   *tcp_handler(void *args);
 void   *udp_handler(void *args);
 
 /*
- * remove training newline character from string
+ * trim string from whitespace characters
  */
-void
-chomp(char *s)
+size_t
+chomp(char *restrict s)
 {
-	char *p;
+	int i;
 
-	while (NULL != s && NULL != (p = strrchr(s, '\n'))) {
-		*p = '\0';
-	}
+	/* trim leading spaces */
+	while (isspace(*s))
+		s++;
+
+	/* All spaces? */
+	if (*s == 0)
+		return 0;
+
+	/* trim trailing spaces */
+	i = strlen(s);
+
+	while ((i > 0) && (isspace(s[i - 1])))
+		i--;
+
+	s[i] = '\0';
+
+	return i;
 }
 
 /*
