@@ -1,6 +1,6 @@
 PREFIX?=/usr/local
 INC=-I$(PREFIX)/include
-LIB=-L$(PREFIX)/lib -lpidutil
+LIB=-L$(PREFIX)/lib -lpidutil -lpthread
 CFLAGS=-Wall -Wextra -g -O2 -pipe -funroll-loops -ffast-math -fno-strict-aliasing
 CC?=cc
 
