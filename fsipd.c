@@ -54,14 +54,18 @@
 #define	PORT 5060
 #define BACKLOG 1024
 
-/* Globals */
+/*
+ * Globals
+ */
 struct pidfh *pfh;
-struct sockaddr_in u_sa;
 struct protoent *proto_tcp, *proto_udp;
+struct sockaddr_in t_sa, u_sa;
+int	t_sockfd, u_sockfd;
 log_t  *lfh;
 
-/* Interface */
-
+/*
+ * Interface
+ */
 void   *tcp_handler(void *args);
 void   *udp_handler(void *args);
 
@@ -144,6 +148,40 @@ daemon_start()
 	if ((lfh = log_open(NULL, 0644)) == NULL) {
 		err(EXIT_FAILURE, "Cannot open log file");
 	}
+	/* setup TCP socket */
+	if ((proto_tcp = getprotobyname("tcp")) == NULL)
+		return (EXIT_FAILURE);
+
+	bzero(&t_sa, sizeof(t_sa));
+	t_sa.sin_port = htons(PORT);
+	t_sa.sin_family = AF_INET;
+	t_sa.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	if ((t_sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("tcp socket()");
+		return (EXIT_FAILURE);
+	}
+	if (bind(t_sockfd, (struct sockaddr *)&t_sa, sizeof t_sa) < 0) {
+		perror("tcp bind()");
+		return (EXIT_FAILURE);
+	}
+	/* setup UDP socket */
+	if ((proto_udp = getprotobyname("udp")) == NULL)
+		return (EXIT_FAILURE);
+
+	bzero(&u_sa, sizeof(u_sa));
+	u_sa.sin_port = htons(PORT);
+	u_sa.sin_family = AF_INET;
+	u_sa.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	if ((u_sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+		perror("udp socket()");
+		return (EXIT_FAILURE);
+	}
+	if (bind(u_sockfd, (struct sockaddr *)&u_sa, sizeof u_sa) < 0) {
+		perror("udp bind()");
+		return (EXIT_FAILURE);
+	}
 	/* start daemonizing */
 	curPID = fork();
 
@@ -153,11 +191,13 @@ daemon_start()
 	case -1:			/* fork() failed, should exit */
 		perror("fork");
 		return (EXIT_FAILURE);
-	default:			/* fork() successful, should exit */
+	default:			/* fork() successful, should exit
+					 * (parent) */
 		return (EXIT_SUCCESS);
 	}
 
 	/* we are the child, complete the daemonization */
+
 	/* Close standard IO */
 	fclose(stdin);
 	fclose(stdout);
@@ -185,9 +225,10 @@ daemon_start()
 	/* create new session and process group */
 	setsid();
 
+#ifdef DEBUG
 	syslog(LOG_ALERT, "%s started with PID %d\n",
 	    getprogname(), getpid());
-
+#endif					/* __DEBUG__ */
 
 	/* persist pid */
 	pidfile_write(pfh);
@@ -197,11 +238,11 @@ daemon_start()
 	pthread_create(&udp_thread, NULL, udp_handler, NULL);
 
 	/*
-	 * Wait until first thread terminates, which normally shouldn't ever
-	 * happen
+	 * Wait until first or second thread terminates, which
+	 * normally shouldn't ever happen
 	 */
-
 	pthread_join(tcp_thread, NULL);
+	pthread_join(udp_thread, NULL);
 
 	return (EXIT_SUCCESS);
 }
@@ -209,35 +250,17 @@ daemon_start()
 void   *
 tcp_handler(void *args)
 {
-	unsigned int b;
-	int c, t_sockfd;
-	struct sockaddr_in t_sa;
+	int c;
+	struct sockaddr_in t_other;
 	FILE *client;
-	char inputstr[8192];
+	char str[8192];
+	socklen_t sa_len;
 
-	/* setup TCP socket */
-	if ((proto_tcp = getprotobyname("tcp")) == NULL)
-		pthread_exit(NULL);
-
-	bzero(&t_sa, sizeof(t_sa));
-	t_sa.sin_port = htons(PORT);
-	t_sa.sin_family = AF_INET;
-	t_sa.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if ((t_sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("socket");
-		pthread_exit(NULL);
-	}
-	if (bind(t_sockfd, (struct sockaddr *)&t_sa, sizeof t_sa) < 0) {
-		perror("bind");
-		pthread_exit(NULL);
-	}
 	listen(t_sockfd, BACKLOG);
 
-
 	while (1) {
-		b = sizeof(t_sa);
-		if ((c = accept(t_sockfd, (struct sockaddr *)&t_sa, &b)) < 0) {
+		sa_len = sizeof(t_sa);
+		if ((c = accept(t_sockfd, (struct sockaddr *)&t_other, &sa_len)) < 0) {
 			perror("accept");
 			pthread_exit(NULL);
 		}
@@ -245,16 +268,29 @@ tcp_handler(void *args)
 			perror("fdopen");
 			pthread_exit(NULL);
 		}
-		fgets(inputstr, sizeof(inputstr), client);
-		process_request(&t_sa, inputstr);
+		bzero(str, sizeof(str));/* just in case */
+		fgets(str, sizeof(str), client);
+		process_request(&t_other, str);
 		fclose(client);
 	}
-	return (args);
+	return (args);			/* mute the compiler warning */
 }
 
 void   *
 udp_handler(void *args)
 {
+	char str[8192];
+	struct sockaddr_in u_other;
+	socklen_t sa_len;
+	ssize_t len;
+
+	sa_len = sizeof(u_other);
+	while (1) {
+		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
+			process_request(&u_other, str);
+		} 
+	}
+
 	return (args);			/* mute the compiler warning */
 }
 
