@@ -2,7 +2,7 @@
 
 fsipd - Fake SIP Daemon
 
-fsipd is a minimal SIP honeypot. It listens on TCP/UDP 5060 and logs all incoming SIP requests along with SRC/DST Source and Port in CSV format.
+fsipd is a minimal SIP honeypot. It listens on TCP/UDP 5060 (ipv4 as well as IPv6 if available) and logs all incoming SIP requests along with SRC/DST Source and Port in CSV format.
 
 ## LOG Format
 
@@ -12,7 +12,7 @@ Incoming packets are logged in CSV format in "fsipd.log". Log format is describe
 
 example:
 
-`1445775973,UDP,127.0.0.1,50751,"INVITE"`
+`1445775973,UDP4,127.0.0.1,50751,"INVITE"`
 
 ## Dependencies
 
