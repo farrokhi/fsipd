@@ -1,0 +1,3 @@
+[submodule "libpidutil"]
+	path = libpidutil
+	url = https://github.com/farrokhi/libpidutil.git

@@ -182,7 +182,7 @@ process_request(int af, struct sockaddr *restrict src, int proto, char *str)
 /*
  * setup TCP listener socket
  */
-inline int
+int
 init_tcp()
 {
 
@@ -226,7 +226,7 @@ init_tcp()
 /*
  * setup UDP listener socket
  */
-inline int
+int
 init_udp()
 {
 
