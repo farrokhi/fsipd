@@ -1,8 +1,9 @@
 CC?=cc
 PREFIX?=/usr/local
-INC=-I./libpidutil -I$(PREFIX)/include
-LDFLAGS=-L./libpidutil -L$(PREFIX)/lib -lpidutil -lpthread
-CFLAGS=-Wall -Wextra -g -O2 -static -pipe -funroll-loops -ffast-math -fno-strict-aliasing
+CFLAGS=-Wall -Wextra -g -O2 -pipe -funroll-loops -ffast-math -fno-strict-aliasing
+CPPFLAGS=-I./libpidutil -I$(PREFIX)/include
+LDFLAGS=-L$(PREFIX)/lib -L./libpidutil -lpidutil -lpthread
+LDLIB=-lpidutil -lpthread
 
 SUBDIRS = libpidutil
 PROGS = fsipd logfile_test
@@ -11,11 +12,11 @@ CFILES = fsipd.c logfile.c
 all: $(SUBDIRS) fsipd
 
 fsipd: $(CFILES)
-	$(CC) $(CFLAGS) $(INC) $(CFILES) $(LDFLAGS) -o fsipd
 
 .PHONY: $(SUBDIRS)
 
 $(SUBDIRS):
+	git submodule update --init $@
 	$(MAKE) -C $@ all
 
 test: logfile.c logfile_test.c
