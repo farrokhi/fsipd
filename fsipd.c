@@ -55,20 +55,21 @@
 #define	PORT 5060
 #define BACKLOG 1024
 
+
 /*
  * Globals
  */
+log_t  *lfh;
 struct pidfh *pfh;
-struct protoent *proto_tcp, *proto_udp;
+
 struct sockaddr_in t_sa, u_sa;
 int	t_sockfd, u_sockfd;
-log_t  *lfh;
 
-/*
- * Interface
- */
-void   *tcp_handler(void *args);
-void   *udp_handler(void *args);
+#ifdef PF_INET6
+struct sockaddr_in6 t6_sa, u6_sa;
+int	t6_sockfd, u6_sockfd;
+
+#endif					/* PF_INET6 */
 
 /*
  * trim string from whitespace characters
@@ -129,29 +130,242 @@ signal_handler(int sig)
 }
 
 void
-process_request(const struct sockaddr_in *sa, int type, char *str)
+process_request(int af, struct sockaddr *restrict src, int proto, char *str)
 {
-	char *s_types[] = {"TCP", "UDP", "RAW", "Unknown"};
-	char *ptype;
+	char *p_names[] = {"TCP", "UDP", "RAW", "UNKNOWN"};
+	char *pname;
+	u_int port;
+	char addr_str[46];
+	struct sockaddr_in *s_in;
 
-	switch (type) {
+#ifdef PF_INET6
+	struct sockaddr_in6 *s_in6;
+
+#endif					/* PF_INET6 */
+
+	switch (proto) {
 	case SOCK_STREAM:
-		ptype = s_types[0];
+		pname = p_names[0];
 		break;
 	case SOCK_DGRAM:
-		ptype = s_types[1];
+		pname = p_names[1];
 		break;
 	case SOCK_RAW:
-		ptype = s_types[2];
+		pname = p_names[2];
 		break;
 	default:
-		ptype = s_types[3];;
+		pname = p_names[3];;
 	}
 
 	chomp(str);
-	log_printf(lfh, "%ld,%s,%s,%d,\"%s\"",
-	    time(NULL), ptype, inet_ntoa(sa->sin_addr), ntohs(sa->sin_port), str);
+
+#ifdef PF_INET6
+	switch (af) {
+	case AF_INET6:
+		s_in6 = (struct sockaddr_in6 *)src;
+		inet_ntop(af, &s_in6->sin6_addr, addr_str, sizeof(addr_str));
+		port = ntohs(s_in6->sin6_port);
+		log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname, addr_str, port, str);
+		break;
+	case AF_INET:
+		s_in = (struct sockaddr_in *)src;
+		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+		break;
+	}
+#else
+		s_in = (struct sockaddr_in *)src;
+		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+#endif
+
 }
+
+/*
+ * setup TCP listener socket
+ */
+inline int
+init_tcp()
+{
+
+#ifdef PF_INET6
+	/* Setup TCP6 Listener */
+	bzero(&t6_sa, sizeof(t6_sa));
+	t6_sa.sin6_port = htons(PORT);
+	t6_sa.sin6_family = AF_INET6;
+	t6_sa.sin6_addr = in6addr_any;
+	t6_sa.sin6_scope_id = 0;
+	if ((t6_sockfd = socket(PF_INET6, SOCK_STREAM, 0)) < 0) {
+		perror("tcp6 socket()");
+		return (EXIT_FAILURE);
+	}
+
+	int on = 1;
+	setsockopt(t6_sockfd, IPPROTO_IPV6, IPV6_BINDV6ONLY, (char *)&on, sizeof(on));
+
+	if (bind(t6_sockfd, (struct sockaddr *)&t6_sa, sizeof(t6_sa)) < 0) {
+		perror("tcp6 bind()");
+		return (EXIT_FAILURE);
+	}
+#endif					/* PF6_INET */
+
+	/* Setup TCP4 Listener */
+	bzero(&t_sa, sizeof(t_sa));
+	t_sa.sin_port = htons(PORT);
+	t_sa.sin_family = AF_INET;
+	t_sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	if ((t_sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("tcp4 socket()");
+		return (EXIT_FAILURE);
+	}
+	if (bind(t_sockfd, (struct sockaddr *)&t_sa, sizeof(t_sa)) < 0) {
+		perror("tcp4 bind()");
+		return (EXIT_FAILURE);
+	}
+	return (EXIT_SUCCESS);
+}
+
+/*
+ * setup UDP listener socket
+ */
+inline int
+init_udp()
+{
+
+#ifdef PF_INET6
+
+	/* Setup UDP6 Listener */
+	bzero(&u6_sa, sizeof(u6_sa));
+	u6_sa.sin6_port = htons(PORT);
+	u6_sa.sin6_family = AF_INET6;
+	u6_sa.sin6_addr = in6addr_any;
+	u6_sa.sin6_scope_id = 0;
+	if ((u6_sockfd = socket(PF_INET6, SOCK_DGRAM, 0)) < 0) {
+		perror("udp6 socket()");
+		return (EXIT_FAILURE);
+	}
+
+	int on = 1;
+	setsockopt(u6_sockfd, IPPROTO_IPV6, IPV6_BINDV6ONLY, (char *)&on, sizeof(on));
+
+	if (bind(u6_sockfd, (struct sockaddr *)&u6_sa, sizeof(u6_sa)) < 0) {
+		perror("udp6 bind()");
+		return (EXIT_FAILURE);
+	}
+#endif					/* PF_INET6 */
+
+	/* Setup UDP4 Listener */
+	bzero(&u_sa, sizeof(u_sa));
+	u_sa.sin_port = htons(PORT);
+	u_sa.sin_family = AF_INET;
+	u_sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	if ((u_sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+		perror("udp4 socket()");
+		return (EXIT_FAILURE);
+	}
+	if (bind(u_sockfd, (struct sockaddr *)&u_sa, sizeof(u_sa)) < 0) {
+		perror("udp4 bind()");
+		return (EXIT_FAILURE);
+	}
+
+	return (EXIT_SUCCESS);
+}
+
+void   *
+tcp4_handler(void *args)
+{
+	int c;
+	struct sockaddr_in t_other;
+	FILE *client;
+	char str[8192];
+	socklen_t sa_len;
+
+	listen(t_sockfd, BACKLOG);
+
+	while (1) {
+		sa_len = sizeof(t_sa);
+		if ((c = accept(t_sockfd, (struct sockaddr *)&t_other, &sa_len)) < 0) {
+			perror("tcp accept()");
+			pthread_exit(NULL);
+		}
+		if ((client = fdopen(c, "r")) == NULL) {
+			perror("tcp fdopen()");
+			pthread_exit(NULL);
+		}
+		bzero(str, sizeof(str));/* just in case */
+		fgets(str, sizeof(str), client);
+		process_request(t_other.sin_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
+		fclose(client);
+	}
+	return (args);			/* suppress compiler warning */
+}
+
+void   *
+udp4_handler(void *args)
+{
+	char str[8192];
+	struct sockaddr_in u_other;
+	socklen_t sa_len;
+	ssize_t len;
+
+	sa_len = sizeof(u_other);
+	while (1) {
+		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
+			process_request(u_other.sin_family, (struct sockaddr *)&u_other, SOCK_DGRAM, str);
+		}
+	}
+
+	return (args);			/* suppress compiler warning */
+}
+
+#ifdef PF_INET6
+
+void   *
+tcp6_handler(void *args)
+{
+	int c;
+	struct sockaddr_in6 t_other;
+	FILE *client;
+	char str[8192];
+	socklen_t sa_len;
+
+	listen(t6_sockfd, BACKLOG);
+
+	while (1) {
+		sa_len = sizeof(t6_sa);
+		if ((c = accept(t6_sockfd, (struct sockaddr *)&t_other, &sa_len)) < 0) {
+			perror("tcp6 accept()");
+			pthread_exit(NULL);
+		}
+		if ((client = fdopen(c, "r")) == NULL) {
+			perror("tcp6 fdopen()");
+			pthread_exit(NULL);
+		}
+		bzero(str, sizeof(str));/* just in case */
+		fgets(str, sizeof(str), client);
+		process_request(t_other.sin6_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
+		fclose(client);
+	}
+	return (args);			/* suppress compiler warning */
+}
+
+void   *
+udp6_handler(void *args)
+{
+	char str[8192];
+	struct sockaddr_in6 u_other;
+	socklen_t sa_len;
+	ssize_t len;
+
+	sa_len = sizeof(u_other);
+	while (1) {
+		if ((len = recvfrom(u6_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
+			process_request(u_other.sin6_family, (struct sockaddr *)&u_other, SOCK_DGRAM, str);
+		}
+	}
+
+	return (args);			/* suppress compiler warning */
+}
+
+#endif /* PF_INET6 */
 
 /*
  * Daemonize and persist pid
@@ -163,7 +377,8 @@ daemon_start()
 	sigset_t sig_set;
 	pid_t otherpid;
 	int curPID;
-	pthread_t tcp_thread, udp_thread;
+	pthread_t tcp4_thread, udp4_thread;
+	pthread_t tcp6_thread, udp6_thread;
 
 	/* Check if we can acquire the pid file */
 	pfh = pidfile_open(NULL, 0600, &otherpid);
@@ -178,40 +393,13 @@ daemon_start()
 	if ((lfh = log_open("fsipd.log", 0644)) == NULL) {
 		err(EXIT_FAILURE, "Cannot open log file");
 	}
-	/* setup TCP socket */
-	if ((proto_tcp = getprotobyname("tcp")) == NULL)
+
+	/* Initialize TCP46 and UDP46 sockets */
+	if (init_tcp() == EXIT_FAILURE)
+		return (EXIT_FAILURE);
+	if (init_udp() == EXIT_FAILURE)
 		return (EXIT_FAILURE);
 
-	bzero(&t_sa, sizeof(t_sa));
-	t_sa.sin_port = htons(PORT);
-	t_sa.sin_family = AF_INET;
-	t_sa.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if ((t_sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("tcp socket()");
-		return (EXIT_FAILURE);
-	}
-	if (bind(t_sockfd, (struct sockaddr *)&t_sa, sizeof t_sa) < 0) {
-		perror("tcp bind()");
-		return (EXIT_FAILURE);
-	}
-	/* setup UDP socket */
-	if ((proto_udp = getprotobyname("udp")) == NULL)
-		return (EXIT_FAILURE);
-
-	bzero(&u_sa, sizeof(u_sa));
-	u_sa.sin_port = htons(PORT);
-	u_sa.sin_family = AF_INET;
-	u_sa.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if ((u_sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("udp socket()");
-		return (EXIT_FAILURE);
-	}
-	if (bind(u_sockfd, (struct sockaddr *)&u_sa, sizeof u_sa) < 0) {
-		perror("udp bind()");
-		return (EXIT_FAILURE);
-	}
 	/* start daemonizing */
 	curPID = fork();
 
@@ -237,9 +425,9 @@ daemon_start()
 	sigemptyset(&sig_set);
 	sigaddset(&sig_set, SIGCHLD);	/* ignore child - i.e. we don't need
 					 * to wait for it */
-	sigaddset(&sig_set, SIGTSTP);	/* ignore Tty stop signals */
-	sigaddset(&sig_set, SIGTTOU);	/* ignore Tty background writes */
-	sigaddset(&sig_set, SIGTTIN);	/* ignore Tty background reads */
+	sigaddset(&sig_set, SIGTSTP);	/* ignore tty stop signals */
+	sigaddset(&sig_set, SIGTTOU);	/* ignore tty background writes */
+	sigaddset(&sig_set, SIGTTIN);	/* ignore tty background reads */
 	sigprocmask(SIG_BLOCK, &sig_set, NULL);	/* Block the above specified
 						 * signals */
 
@@ -255,73 +443,29 @@ daemon_start()
 	/* create new session and process group */
 	setsid();
 
-#ifdef DEBUG
-	syslog(LOG_ALERT, "%s started with PID %d\n",
-	    getprogname(), getpid());
-#endif					/* __DEBUG__ */
-
 	/* persist pid */
 	pidfile_write(pfh);
 
 	/* Create TCP and UDP listener threads */
-	pthread_create(&tcp_thread, NULL, tcp_handler, NULL);
-	pthread_create(&udp_thread, NULL, udp_handler, NULL);
+	pthread_create(&tcp4_thread, NULL, tcp4_handler, NULL);
+	pthread_create(&udp4_thread, NULL, udp4_handler, NULL);
+#ifdef PF_INET6
+	pthread_create(&tcp6_thread, NULL, tcp6_handler, NULL);
+	pthread_create(&udp6_thread, NULL, udp6_handler, NULL);
+#endif
 
 	/*
-	 * Wait until first or second thread terminates, which
+	 * Wait for threads to terminate, which
 	 * normally shouldn't ever happen
 	 */
-	pthread_join(tcp_thread, NULL);
-	pthread_join(udp_thread, NULL);
+	pthread_join(tcp4_thread, NULL);
+	pthread_join(udp4_thread, NULL);
+#ifdef PF_INET6
+	pthread_join(tcp6_thread, NULL);
+	pthread_join(udp6_thread, NULL);
+#endif
 
 	return (EXIT_SUCCESS);
-}
-
-void   *
-tcp_handler(void *args)
-{
-	int c;
-	struct sockaddr_in t_other;
-	FILE *client;
-	char str[8192];
-	socklen_t sa_len;
-
-	listen(t_sockfd, BACKLOG);
-
-	while (1) {
-		sa_len = sizeof(t_sa);
-		if ((c = accept(t_sockfd, (struct sockaddr *)&t_other, &sa_len)) < 0) {
-			perror("accept");
-			pthread_exit(NULL);
-		}
-		if ((client = fdopen(c, "r")) == NULL) {
-			perror("fdopen");
-			pthread_exit(NULL);
-		}
-		bzero(str, sizeof(str));/* just in case */
-		fgets(str, sizeof(str), client);
-		process_request(&t_other, SOCK_STREAM, str);
-		fclose(client);
-	}
-	return (args);			/* mute the compiler warning */
-}
-
-void   *
-udp_handler(void *args)
-{
-	char str[8192];
-	struct sockaddr_in u_other;
-	socklen_t sa_len;
-	ssize_t len;
-
-	sa_len = sizeof(u_other);
-	while (1) {
-		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
-			process_request(&u_other, SOCK_DGRAM, str);
-		}
-	}
-
-	return (args);			/* mute the compiler warning */
 }
 
 int
