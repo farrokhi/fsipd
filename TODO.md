@@ -1,1 +1,2 @@
-* Add support for IPv6 (autodetect)
+* ~~Add support for IPv6 (autodetect)~~
+
