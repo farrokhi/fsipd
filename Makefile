@@ -18,7 +18,7 @@ fsipd: $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) $(LDLIBS) -o fsipd
 
 get-deps:
-	git submodule update --init libpidutil
+	git submodule update --init
 
 $(SUBDIRS):
 	$(MAKE) -C $@ all
