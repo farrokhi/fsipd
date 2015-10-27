@@ -26,6 +26,12 @@
 
 #include "logfile.h"
 
+#ifdef __linux__
+#define _PROGNAME program_invocation_short_name
+#else
+#define _PROGNAME getprogname()
+#endif /* __linux__ */
+
 log_t  *
 log_open(const char *path, mode_t mode)
 {
@@ -35,7 +41,7 @@ log_open(const char *path, mode_t mode)
 	int fd;
 
 	if (path == NULL) {
-		asprintf(&filename, "%s/%s.log", LOGPATH, getprogname());
+		asprintf(&filename, "%s/%s.log", LOGPATH, _PROGNAME);
 	} else {
 		filename = (char *)path;
 	}
@@ -44,8 +50,12 @@ log_open(const char *path, mode_t mode)
 	 * try to create / append the file and make sure it is correctly
 	 * created
 	 */
-	if ((fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_EXLOCK | O_SYNC, mode)) == -1)
+	if ((fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC, mode)) == -1)
 		return (NULL);
+	if (flock(fd, LOCK_EX) == -1 ) {
+		close(fd);
+		return (NULL);
+	}
 	if (stat(filename, &sb) == -1) {
 		close(fd);
 		return (NULL);

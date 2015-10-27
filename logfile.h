@@ -27,6 +27,10 @@
 #ifndef _LOGFILE_H
 #define _LOGFILE_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <sys/file.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -41,6 +45,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
+#include <libgen.h>
 
 #define LOGPATH "/var/log"
 #define MAX_MSG_SIZE 65536

@@ -55,6 +55,10 @@
 #define	PORT 5060
 #define BACKLOG 1024
 
+#ifndef IPV6_BINDV6ONLY /* Linux does not have IPV6_BINDV6ONLY */
+#define IPV6_BINDV6ONLY IPV6_V6ONLY
+#endif /*IPV6_BINDV6ONLY */
+
 
 /*
  * Globals
@@ -75,7 +79,7 @@ int	t6_sockfd, u6_sockfd;
  * trim string from whitespace characters
  */
 size_t
-chomp(char *restrict s)
+chomp(char *s)
 {
 	int i;
 
@@ -130,7 +134,7 @@ signal_handler(int sig)
 }
 
 void
-process_request(int af, struct sockaddr *restrict src, int proto, char *str)
+process_request(int af, struct sockaddr *src, int proto, char *str)
 {
 	char *p_names[] = {"TCP", "UDP", "RAW", "UNKNOWN"};
 	char *pname;

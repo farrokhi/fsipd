@@ -23,7 +23,7 @@ get-deps:
 $(SUBDIRS):
 	$(MAKE) -C $@ all
 
-test: logfile.c logfile_test.c
+test: logfile.h logfile.c logfile_test.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) logfile.c logfile_test.c -o logfile_test
 
 clean:
