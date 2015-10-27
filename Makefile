@@ -10,15 +10,17 @@ SUBDIRS = libpidutil
 PROGS = fsipd logfile_test
 OBJ = logfile.o fsipd.o
 
-all: $(SUBDIRS) fsipd
+.PHONY: $(SUBDIRS) get-deps
+
+all: get-deps $(SUBDIRS) fsipd
 
 fsipd: $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) $(LDLIBS) -o fsipd
 
-.PHONY: $(SUBDIRS)
-	
+get-deps:
+	git submodule update --init libpidutil
+
 $(SUBDIRS):
-	git submodule update --init $@
 	$(MAKE) -C $@ all
 
 test: logfile.c logfile_test.c
