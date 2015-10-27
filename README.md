@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/farrokhi/fsipd.svg?branch=master)](https://travis-ci.org/farrokhi/fsipd)
+
 # fsipd
 
 fsipd - Fake SIP Daemon
