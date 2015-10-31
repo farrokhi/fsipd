@@ -55,10 +55,9 @@
 #define	PORT 5060
 #define BACKLOG 1024
 
-#ifndef IPV6_BINDV6ONLY /* Linux does not have IPV6_BINDV6ONLY */
+#ifndef IPV6_BINDV6ONLY			/* Linux does not have IPV6_BINDV6ONLY */
 #define IPV6_BINDV6ONLY IPV6_V6ONLY
-#endif /*IPV6_BINDV6ONLY */
-
+#endif					/* IPV6_BINDV6ONLY */
 
 /*
  * Globals
@@ -121,7 +120,7 @@ signal_handler(int sig)
 	switch (sig) {
 
 	case SIGHUP:
-		log_reopen(&lfh);
+		log_reopen(&lfh);	/* necessary for log file rotation */
 		break;
 	case SIGINT:
 	case SIGTERM:
@@ -163,6 +162,7 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 
 	chomp(str);
 
+/* todo: add optional syslog support */
 #ifdef PF_INET6
 	switch (af) {
 	case AF_INET6:
@@ -177,8 +177,8 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 		break;
 	}
 #else
-		s_in = (struct sockaddr_in *)src;
-		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+	s_in = (struct sockaddr_in *)src;
+	log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
 #endif
 
 }
@@ -201,8 +201,8 @@ init_tcp()
 		perror("tcp6 socket()");
 		return (EXIT_FAILURE);
 	}
-
 	int on = 1;
+
 	setsockopt(t6_sockfd, IPPROTO_IPV6, IPV6_BINDV6ONLY, (char *)&on, sizeof(on));
 
 	if (bind(t6_sockfd, (struct sockaddr *)&t6_sa, sizeof(t6_sa)) < 0) {
@@ -246,8 +246,8 @@ init_udp()
 		perror("udp6 socket()");
 		return (EXIT_FAILURE);
 	}
-
 	int on = 1;
+
 	setsockopt(u6_sockfd, IPPROTO_IPV6, IPV6_BINDV6ONLY, (char *)&on, sizeof(on));
 
 	if (bind(u6_sockfd, (struct sockaddr *)&u6_sa, sizeof(u6_sa)) < 0) {
@@ -269,7 +269,6 @@ init_udp()
 		perror("udp4 bind()");
 		return (EXIT_FAILURE);
 	}
-
 	return (EXIT_SUCCESS);
 }
 
@@ -369,7 +368,7 @@ udp6_handler(void *args)
 	return (args);			/* suppress compiler warning */
 }
 
-#endif /* PF_INET6 */
+#endif					/* PF_INET6 */
 
 /*
  * Daemonize and persist pid
@@ -397,7 +396,6 @@ daemon_start()
 	if ((lfh = log_open("fsipd.log", 0644)) == NULL) {
 		err(EXIT_FAILURE, "Cannot open log file");
 	}
-
 	/* Initialize TCP46 and UDP46 sockets */
 	if (init_tcp() == EXIT_FAILURE)
 		return (EXIT_FAILURE);

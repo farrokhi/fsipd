@@ -30,7 +30,7 @@
 #define _PROGNAME program_invocation_short_name
 #else
 #define _PROGNAME getprogname()
-#endif /* __linux__ */
+#endif					/* __linux__ */
 
 log_t  *
 log_open(const char *path, mode_t mode)
@@ -52,7 +52,7 @@ log_open(const char *path, mode_t mode)
 	 */
 	if ((fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC, mode)) == -1)
 		return (NULL);
-	if (flock(fd, LOCK_EX) == -1 ) {
+	if (flock(fd, LOCK_EX) == -1) {
 		close(fd);
 		return (NULL);
 	}
