@@ -64,6 +64,7 @@
  */
 log_t  *lfh;
 struct pidfh *pfh;
+bool	use_syslog = false;
 
 struct sockaddr_in t_sa, u_sa;
 int	t_sockfd, u_sockfd;
@@ -162,7 +163,7 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 
 	chomp(str);
 
-/* todo: add optional syslog support */
+	/* todo: add optional syslog support */
 #ifdef PF_INET6
 	switch (af) {
 	case AF_INET6:
@@ -457,8 +458,8 @@ daemon_start()
 #endif
 
 	/*
-	 * Wait for threads to terminate, which
-	 * normally shouldn't ever happen
+	 * Wait for threads to terminate, which normally shouldn't ever
+	 * happen
 	 */
 	pthread_join(tcp4_thread, NULL);
 	pthread_join(udp4_thread, NULL);
@@ -470,8 +471,34 @@ daemon_start()
 	return (EXIT_SUCCESS);
 }
 
-int
-main(void)
+void
+usage()
 {
+	printf("usage: fsipd [-h] [-s] \n");
+	printf("\t-h: this message\n");
+	printf("\t-s: use syslog instead of local log file\n");
+}
+
+int
+main(int argc, char *argv[])
+{
+	int opt;
+
+	while ((opt = getopt(argc, argv, "hs")) != -1) {
+		switch (opt) {
+		case 's':
+			use_syslog = true;
+			break;
+		case 'h':
+			usage();
+			exit(0);
+			break;
+		default:
+			printf("invalid option: %c\n", opt);
+			usage();
+			exit(1);
+		}
+	}
+
 	return (daemon_start());
 }
