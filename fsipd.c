@@ -46,6 +46,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#define SYSLOG_NAMES
 #include <syslog.h>
 #include <pthread.h>
 #include <pidutil.h>
@@ -65,7 +66,7 @@
 log_t  *lfh;
 struct pidfh *pfh;
 bool	use_syslog = false;
-int	syslog_pri;
+int	syslog_pri = -1;
 
 struct sockaddr_in t_sa, u_sa;
 int	t_sockfd, u_sockfd;
@@ -391,8 +392,8 @@ init_logger()
 {
 	if (use_syslog) {
 		/* initialize facility and level parameters */
-		/* todo: should be configurable from command line */
-		syslog_pri = LOG_LOCAL0 | LOG_NOTICE;
+		if (syslog_pri == -1)	/* not specidied by user, use default */
+			syslog_pri = LOG_USER | LOG_NOTICE | LOG_PID;
 	} else {
 		/* open a log file in current directory */
 		/* todo: filename should be configurable from command line */
@@ -502,9 +503,48 @@ daemon_start()
 void
 usage()
 {
-	printf("usage: fsipd [-h] [-s] \n");
+	printf("usage: fsipd [-h] [-s] [-p priority] \n");
 	printf("\t-h: this message\n");
-	printf("\t-s: use syslog (local0.notice) instead of local log file\n");
+	printf("\t-s: use syslog instead of local log file\n");
+	printf("\t-p: syslog priotiry (default: user.notice)\n");
+}
+
+static int
+decode(char *name, const CODE * codetab)
+{
+	const CODE *c;
+
+	if (isdigit(*name))
+		return (atoi(name));
+
+	for (c = codetab; c->c_name; c++)
+		if (!strcasecmp(name, c->c_name))
+			return (c->c_val);
+
+	return (-1);
+}
+
+static int
+decodepri(char *s)
+{
+	char *save;
+	int fac, lev;
+
+	for (save = s; *s && *s != '.'; ++s);
+	if (*s) {
+		*s = '\0';
+		fac = decode(save, facilitynames);
+		if (fac < 0)
+			errx(1, "unknown facility name: %s", save);
+		*s++ = '.';
+	} else {
+		fac = 0;
+		s = save;
+	}
+	lev = decode(s, prioritynames);
+	if (lev < 0)
+		errx(1, "unknown priority name: %s", save);
+	return ((lev & LOG_PRIMASK) | (fac & LOG_FACMASK));
 }
 
 int
@@ -512,10 +552,17 @@ main(int argc, char *argv[])
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "hs")) != -1) {
+	while ((opt = getopt(argc, argv, "hsp:")) != -1) {
 		switch (opt) {
 		case 's':
 			use_syslog = true;
+			break;
+		case 'p':
+			if (use_syslog) {
+				syslog_pri = decodepri(optarg) | LOG_PID;
+			} else {
+				errx(EX_USAGE, "you need to specify \"-s\".");
+			}
 			break;
 		case 'h':
 			usage();
