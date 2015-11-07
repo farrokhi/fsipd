@@ -65,6 +65,7 @@
 log_t  *lfh;
 struct pidfh *pfh;
 bool	use_syslog = false;
+int	syslog_pri;
 
 struct sockaddr_in t_sa, u_sa;
 int	t_sockfd, u_sockfd;
@@ -109,7 +110,8 @@ void
 daemon_shutdown()
 {
 	pidfile_remove(pfh);
-	log_close(lfh);
+	if (!use_syslog)
+		log_close(lfh);
 }
 
 /*
@@ -121,7 +123,9 @@ signal_handler(int sig)
 	switch (sig) {
 
 	case SIGHUP:
-		log_reopen(&lfh);	/* necessary for log file rotation */
+		if (!use_syslog)
+			log_reopen(&lfh);	/* necessary for log file
+						 * rotation */
 		break;
 	case SIGINT:
 	case SIGTERM:
@@ -163,23 +167,34 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 
 	chomp(str);
 
-	/* todo: add optional syslog support */
 #ifdef PF_INET6
 	switch (af) {
 	case AF_INET6:
 		s_in6 = (struct sockaddr_in6 *)src;
 		inet_ntop(af, &s_in6->sin6_addr, addr_str, sizeof(addr_str));
 		port = ntohs(s_in6->sin6_port);
-		log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname, addr_str, port, str);
+		if (use_syslog) {
+			syslog(syslog_pri, "From: %s:%d (%s6) - Message: \"%s\"", addr_str, port, pname, str);
+		} else {
+			log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname, addr_str, port, str);
+		}
 		break;
 	case AF_INET:
 		s_in = (struct sockaddr_in *)src;
-		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+		if (use_syslog) {
+			syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), pname, str);
+		} else {
+			log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+		}
 		break;
 	}
 #else
 	s_in = (struct sockaddr_in *)src;
-	log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+	if (use_syslog) {
+		syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), pname, str);
+	} else {
+		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+	}
 #endif
 
 }
@@ -371,6 +386,21 @@ udp6_handler(void *args)
 
 #endif					/* PF_INET6 */
 
+void
+init_logger()
+{
+	if (use_syslog) {
+		/* initialize facility and level parameters */
+		/* todo: should be configurable from command line */
+		syslog_pri = LOG_LOCAL0 | LOG_NOTICE;
+	} else {
+		/* open a log file in current directory */
+		/* todo: filename should be configurable from command line */
+		if ((lfh = log_open("fsipd.log", 0644)) == NULL)
+			err(EXIT_FAILURE, "Cannot open log file");
+	}
+}
+
 /*
  * Daemonize and persist pid
  */
@@ -393,10 +423,8 @@ daemon_start()
 		}
 		err(EXIT_FAILURE, "Cannot open or create pidfile");
 	}
-	/* open a log file in current directory */
-	if ((lfh = log_open("fsipd.log", 0644)) == NULL) {
-		err(EXIT_FAILURE, "Cannot open log file");
-	}
+	init_logger();
+
 	/* Initialize TCP46 and UDP46 sockets */
 	if (init_tcp() == EXIT_FAILURE)
 		return (EXIT_FAILURE);
@@ -476,7 +504,7 @@ usage()
 {
 	printf("usage: fsipd [-h] [-s] \n");
 	printf("\t-h: this message\n");
-	printf("\t-s: use syslog instead of local log file\n");
+	printf("\t-s: use syslog (local0.notice) instead of local log file\n");
 }
 
 int
