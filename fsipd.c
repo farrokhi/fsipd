@@ -66,6 +66,7 @@
 log_t  *lfh;
 struct pidfh *pfh;
 bool	use_syslog = false;
+char   *logfilename = NULL;
 int	syslog_pri = -1;
 
 struct sockaddr_in t_sa, u_sa;
@@ -396,9 +397,10 @@ init_logger()
 			syslog_pri = LOG_USER | LOG_NOTICE | LOG_PID;
 	} else {
 		/* open a log file in current directory */
-		/* todo: filename should be configurable from command line */
-		if ((lfh = log_open("fsipd.log", 0644)) == NULL)
-			err(EXIT_FAILURE, "Cannot open log file");
+		if (logfilename == NULL)
+			logfilename = strdup("fsipd.log");
+		if ((lfh = log_open(logfilename, 0644)) == NULL)
+			err(EXIT_FAILURE, "Cannot open log file \"%s\"", logfilename);
 	}
 }
 
@@ -503,10 +505,11 @@ daemon_start()
 void
 usage()
 {
-	printf("usage: fsipd [-h] [-s] [-p priority] \n");
+	printf("usage: fsipd [-h] [-l logfile] [-s] [-p priority] \n");
 	printf("\t-h: this message\n");
 	printf("\t-s: use syslog instead of local log file\n");
 	printf("\t-p: syslog priotiry (default: user.notice)\n");
+	printf("\t-l: specify output log filename (default: fsipd.log)\n");
 }
 
 static int
@@ -552,7 +555,7 @@ main(int argc, char *argv[])
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "hsp:")) != -1) {
+	while ((opt = getopt(argc, argv, "hl:sp:")) != -1) {
 		switch (opt) {
 		case 's':
 			use_syslog = true;
@@ -563,6 +566,9 @@ main(int argc, char *argv[])
 			} else {
 				errx(EX_USAGE, "you need to specify \"-s\".");
 			}
+			break;
+		case 'l':
+			logfilename = strdup(optarg);
 			break;
 		case 'h':
 			usage();
