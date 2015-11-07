@@ -1,3 +1,4 @@
+
 /*-
  * Copyright (c) 2015, Babak Farrokhi
  * All rights reserved.
@@ -32,6 +33,9 @@
 #define _PROGNAME getprogname()
 #endif					/* __linux__ */
 
+/*
+ * create/open given logfile and initialize appropriate struct
+ */
 log_t  *
 log_open(const char *path, mode_t mode)
 {
@@ -72,6 +76,9 @@ log_open(const char *path, mode_t mode)
 	return (lh);
 }
 
+/*
+ * close logfile handle and free up allocated struct
+ */
 void
 log_close(const log_t *log)
 {
@@ -82,6 +89,9 @@ log_close(const log_t *log)
 	free((void *)log);
 }
 
+/*
+ * check whether or not the logfile is opened
+ */
 inline	bool
 log_isopen(const log_t *log)
 {
@@ -90,6 +100,9 @@ log_isopen(const log_t *log)
 	return (log->fd != -1);
 }
 
+/*
+ * close and open logfile, used when a HUP signal is received (mosly in case of log roration)
+ */
 void
 log_reopen(log_t **log)
 {
@@ -104,6 +117,10 @@ log_reopen(log_t **log)
 	*log = log_open(newlog->path, newlog->mode);
 	free(newlog);
 }
+
+/*
+ * printf given text into logfile
+ */
 
 void
 log_printf(const log_t *log, const char *format,...)
@@ -123,6 +140,9 @@ log_printf(const log_t *log, const char *format,...)
 	write(log->fd, newline, sizeof(*newline));
 }
 
+/*
+ * printf into a logfile with timestamp prefix
+ */
 void
 log_tsprintf(const log_t *log, const char *format,...)
 {
@@ -150,6 +170,9 @@ log_tsprintf(const log_t *log, const char *format,...)
 	write(log->fd, newline, sizeof(*newline));
 }
 
+/*
+ * check integrity of logfile with comparing filesystem stat with our use-specified settings
+ */
 bool
 log_verify(const log_t *log)
 {
