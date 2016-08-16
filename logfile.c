@@ -138,6 +138,8 @@ log_printf(const log_t *log, const char *format,...)
 
 	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
 	write(log->fd, newline, sizeof(*newline));
+	
+	free(message);
 }
 
 /*
@@ -168,6 +170,8 @@ log_tsprintf(const log_t *log, const char *format,...)
 	write(log->fd, s_time, tsize);
 	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
 	write(log->fd, newline, sizeof(*newline));
+
+    free(message);
 }
 
 /*
