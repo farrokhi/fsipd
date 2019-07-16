@@ -10,11 +10,15 @@ fsipd is a minimal SIP honeypot. It listens on TCP/UDP 5060 (ipv4 as well as IPv
 
 Incoming packets are logged in CSV format in "fsipd.log". Log format is described below:
 
-`epoch timestamp, protocol, src ip, src port, "message"`
+```
+epoch timestamp, protocol, src ip, src port, "message"
+```
 
 example:
 
-`1445775973,UDP4,127.0.0.1,50751,"INVITE"`
+```
+1445775973,UDP4,127.0.0.1,50751,"INVITE"
+```
 
 ## Dependencies
 
