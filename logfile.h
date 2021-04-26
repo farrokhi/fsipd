@@ -22,7 +22,7 @@
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
 #ifndef _LOGFILE_H
 #define _LOGFILE_H
@@ -31,39 +31,39 @@
 #define _GNU_SOURCE
 #endif
 
-#include <sys/file.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/param.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdarg.h>
-#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <libgen.h>
+#include <unistd.h>
 
 #define LOGPATH "/var/log"
 #define MAX_MSG_SIZE 65536
 
 typedef struct _log_t {
-	int	fd;
-	char	path[MAXPATHLEN + 1];
-	dev_t	dev;
-	ino_t	ino;
-	mode_t	mode;
+	int    fd;
+	char   path[MAXPATHLEN + 1];
+	dev_t  dev;
+	ino_t  ino;
+	mode_t mode;
 } log_t;
 
-log_t  *log_open(const char *path, mode_t mode);
-void	log_close(const log_t *log);
-bool	log_isopen(const log_t *log);
-bool	log_verify(const log_t *log);
-void	log_reopen(log_t **log);
-void	log_printf(const log_t *log, const char *format,...);
-void	log_tsprintf(const log_t *log, const char *format,...);
+log_t *log_open(const char *path, mode_t mode);
+void   log_close(const log_t *log);
+bool   log_isopen(const log_t *log);
+bool   log_verify(const log_t *log);
+void   log_reopen(log_t **log);
+void   log_printf(const log_t *log, const char *format, ...);
+void   log_tsprintf(const log_t *log, const char *format, ...);
 
-#endif					/* _LOGFILE_H */
+#endif /* _LOGFILE_H */
