@@ -3,11 +3,11 @@
 ---
 BasedOnStyle: WebKit
 AlignAfterOpenBracket: DontAlign
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
 AlignEscapedNewlines: Left
 AlignOperands: false
-AlignTrailingComments: true
+AlignTrailingComments: false
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: Never
@@ -99,7 +99,7 @@ PointerAlignment: Right
 ContinuationIndentWidth: 4
 IndentWidth: 8
 TabWidth: 8
-ColumnLimit: 80
+ColumnLimit: 100
 UseTab: Always
 SpaceAfterCStyleCast: false
 IncludeBlocks: Regroup
