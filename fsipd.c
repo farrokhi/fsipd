@@ -24,6 +24,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define _POSIX_C_SOURCE 200809L
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
+#include <sysexits.h>
+#include <unistd.h>
+
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/param.h>
@@ -39,13 +49,7 @@
 #include <errno.h>
 
 #include <signal.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sysexits.h>
-#include <unistd.h>
+#include <getopt.h>
 #define SYSLOG_NAMES
 #include <syslog.h>
 #include <pthread.h>
@@ -144,7 +148,7 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 {
 	char *p_names[] = {"TCP", "UDP", "RAW", "UNKNOWN"};
 	char *pname;
-	u_int port;
+	uint16_t port;
 	char addr_str[46];
 	struct sockaddr_in *s_in;
 
@@ -210,7 +214,7 @@ init_tcp()
 
 #ifdef PF_INET6
 	/* Setup TCP6 Listener */
-	bzero(&t6_sa, sizeof(t6_sa));
+	memset(&t6_sa, 0, sizeof(t6_sa));
 	t6_sa.sin6_port = htons(PORT);
 	t6_sa.sin6_family = AF_INET6;
 	t6_sa.sin6_addr = in6addr_any;
@@ -230,7 +234,7 @@ init_tcp()
 #endif					/* PF6_INET */
 
 	/* Setup TCP4 Listener */
-	bzero(&t_sa, sizeof(t_sa));
+	memset(&t_sa, 0, sizeof(t_sa));
 	t_sa.sin_port = htons(PORT);
 	t_sa.sin_family = AF_INET;
 	t_sa.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -255,7 +259,7 @@ init_udp()
 #ifdef PF_INET6
 
 	/* Setup UDP6 Listener */
-	bzero(&u6_sa, sizeof(u6_sa));
+	memset(&u6_sa, 0, sizeof(u6_sa));
 	u6_sa.sin6_port = htons(PORT);
 	u6_sa.sin6_family = AF_INET6;
 	u6_sa.sin6_addr = in6addr_any;
@@ -275,7 +279,7 @@ init_udp()
 #endif					/* PF_INET6 */
 
 	/* Setup UDP4 Listener */
-	bzero(&u_sa, sizeof(u_sa));
+	memset(&u_sa, 0, sizeof(u_sa));
 	u_sa.sin_port = htons(PORT);
 	u_sa.sin_family = AF_INET;
 	u_sa.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -311,7 +315,7 @@ tcp4_handler(void *args)
 			perror("tcp fdopen()");
 			pthread_exit(NULL);
 		}
-		bzero(str, sizeof(str));/* just in case */
+		memset(str, 0, sizeof(str));/* just in case */
 		fgets(str, sizeof(str), client);
 		process_request(t_other.sin_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
 		fclose(client);
@@ -360,7 +364,7 @@ tcp6_handler(void *args)
 			perror("tcp6 fdopen()");
 			pthread_exit(NULL);
 		}
-		bzero(str, sizeof(str));/* just in case */
+		memset(str, 0, sizeof(str));/* just in case */
 		fgets(str, sizeof(str), client);
 		process_request(t_other.sin6_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
 		fclose(client);
