@@ -2,7 +2,7 @@ CC?=
 PREFIX?=/usr/local
 BINDIR=$(PREFIX)/bin
 CPPFLAGS=-I./libpidutil -I$(PREFIX)/include
-CFLAGS=-Wall -Wextra -g -O2 -pipe -funroll-loops -ffast-math -fno-strict-aliasing
+CFLAGS=-Wall -Werror -Wextra -g -std=c17 -O2 -pipe -funroll-loops -ffast-math -fno-strict-aliasing
 CFLAGS+=$(CPPFLAGS)
 LDFLAGS=-L$(PREFIX)/lib -L./libpidutil
 LDLIBS=-lpidutil -lpthread

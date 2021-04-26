@@ -23,7 +23,7 @@
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
 #include "logfile.h"
 
@@ -31,18 +31,18 @@
 #define _PROGNAME program_invocation_short_name
 #else
 #define _PROGNAME getprogname()
-#endif					/* __linux__ */
+#endif /* __linux__ */
 
 /*
  * create/open given logfile and initialize appropriate struct
  */
-log_t  *
+log_t *
 log_open(const char *path, mode_t mode)
 {
-	log_t *lh;
+	log_t *	    lh;
 	struct stat sb;
-	char *filename;
-	int fd;
+	char *	    filename;
+	int	    fd;
 
 	if (path == NULL) {
 		asprintf(&filename, "%s/%s.log", LOGPATH, _PROGNAME);
@@ -67,9 +67,9 @@ log_open(const char *path, mode_t mode)
 	/* initialize data structure */
 	lh = calloc(1, sizeof(log_t));
 
-	lh->fd = fd;
-	lh->dev = sb.st_dev;
-	lh->ino = sb.st_ino;
+	lh->fd	 = fd;
+	lh->dev	 = sb.st_dev;
+	lh->ino	 = sb.st_ino;
 	lh->mode = sb.st_mode;
 	strncpy(lh->path, filename, strnlen(filename, MAXPATHLEN + 1));
 
@@ -92,7 +92,7 @@ log_close(const log_t *log)
 /*
  * check whether or not the logfile is opened
  */
-inline	bool
+inline bool
 log_isopen(const log_t *log)
 {
 	if (log == NULL)
@@ -123,14 +123,14 @@ log_reopen(log_t **log)
  */
 
 void
-log_printf(const log_t *log, const char *format,...)
+log_printf(const log_t *log, const char *format, ...)
 {
 	if (!log_isopen(log))
 		return;
 
 	va_list args;
-	char *message;
-	char *newline = "\n";
+	char *	message;
+	char *	newline = "\n";
 
 	va_start(args, format);
 	vasprintf(&message, format, args);
@@ -138,7 +138,7 @@ log_printf(const log_t *log, const char *format,...)
 
 	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
 	write(log->fd, newline, sizeof(*newline));
-	
+
 	free(message);
 }
 
@@ -146,24 +146,24 @@ log_printf(const log_t *log, const char *format,...)
  * printf into a logfile with timestamp prefix
  */
 void
-log_tsprintf(const log_t *log, const char *format,...)
+log_tsprintf(const log_t *log, const char *format, ...)
 {
 	if (!log_isopen(log))
 		return;
 
-	va_list args;
-	char *message;
-	char s_time[30];
-	time_t now;
+	va_list	   args;
+	char *	   message;
+	char	   s_time[30];
+	time_t	   now;
 	struct tm *ltime;
-	size_t tsize;
-	char *newline = "\n";
+	size_t	   tsize;
+	char *	   newline = "\n";
 
 	va_start(args, format);
 	vasprintf(&message, format, args);
 	va_end(args);
 
-	now = time(NULL);
+	now   = time(NULL);
 	ltime = localtime(&now);
 	tsize = strftime(s_time, sizeof(s_time), "%Y-%m-%d %T %Z - ", ltime);
 
@@ -171,7 +171,7 @@ log_tsprintf(const log_t *log, const char *format,...)
 	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
 	write(log->fd, newline, sizeof(*newline));
 
-    free(message);
+	free(message);
 }
 
 /*
