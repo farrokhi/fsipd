@@ -22,10 +22,26 @@
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
 #define _POSIX_C_SOURCE 200809L
 
+#include <sys/cdefs.h>
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/file.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+
+#include <netinet/in.h>
+
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <err.h>
+#include <errno.h>
+#include <getopt.h>
+#include <netdb.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -33,54 +49,37 @@
 #include <strings.h>
 #include <sysexits.h>
 #include <unistd.h>
-
-#include <sys/cdefs.h>
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/time.h>
-#include <sys/file.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <ctype.h>
-
-#include <err.h>
-#include <errno.h>
-
-#include <signal.h>
-#include <getopt.h>
 #define SYSLOG_NAMES
-#include <syslog.h>
-#include <pthread.h>
 #include <pidutil.h>
+#include <pthread.h>
+#include <syslog.h>
 
 #include "logfile.h"
 
-#define	PORT 5060
+#define PORT 5060
 #define BACKLOG 1024
 
-#ifndef IPV6_BINDV6ONLY			/* Linux does not have IPV6_BINDV6ONLY */
+#ifndef IPV6_BINDV6ONLY /* Linux does not have IPV6_BINDV6ONLY */
 #define IPV6_BINDV6ONLY IPV6_V6ONLY
-#endif					/* IPV6_BINDV6ONLY */
+#endif /* IPV6_BINDV6ONLY */
 
 /*
  * Globals
  */
-log_t  *lfh;
+log_t *	      lfh;
 struct pidfh *pfh;
-bool	use_syslog = false;
-char   *logfilename = NULL;
-int	syslog_pri = -1;
+bool	      use_syslog  = false;
+char *	      logfilename = NULL;
+int	      syslog_pri  = -1;
 
 struct sockaddr_in t_sa, u_sa;
-int	t_sockfd, u_sockfd;
+int		   t_sockfd, u_sockfd;
 
 #ifdef PF_INET6
 struct sockaddr_in6 t6_sa, u6_sa;
-int	t6_sockfd, u6_sockfd;
+int		    t6_sockfd, u6_sockfd;
 
-#endif					/* PF_INET6 */
+#endif /* PF_INET6 */
 
 /*
  * trim string from whitespace characters
@@ -130,8 +129,8 @@ signal_handler(int sig)
 
 	case SIGHUP:
 		if (!use_syslog)
-			log_reopen(&lfh);	/* necessary for log file
-						 * rotation */
+			log_reopen(&lfh); /* necessary for log file
+					   * rotation */
 		break;
 	case SIGINT:
 	case SIGTERM:
@@ -146,16 +145,16 @@ signal_handler(int sig)
 void
 process_request(int af, struct sockaddr *src, int proto, char *str)
 {
-	char *p_names[] = {"TCP", "UDP", "RAW", "UNKNOWN"};
-	char *pname;
-	uint16_t port;
-	char addr_str[46];
+	char *		    p_names[] = { "TCP", "UDP", "RAW", "UNKNOWN" };
+	char *		    pname;
+	uint16_t	    port;
+	char		    addr_str[46];
 	struct sockaddr_in *s_in;
 
 #ifdef PF_INET6
 	struct sockaddr_in6 *s_in6;
 
-#endif					/* PF_INET6 */
+#endif /* PF_INET6 */
 
 	switch (proto) {
 	case SOCK_STREAM:
@@ -168,7 +167,8 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 		pname = p_names[2];
 		break;
 	default:
-		pname = p_names[3];;
+		pname = p_names[3];
+		;
 	}
 
 	chomp(str);
@@ -180,29 +180,34 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 		inet_ntop(af, &s_in6->sin6_addr, addr_str, sizeof(addr_str));
 		port = ntohs(s_in6->sin6_port);
 		if (use_syslog) {
-			syslog(syslog_pri, "From: %s:%d (%s6) - Message: \"%s\"", addr_str, port, pname, str);
+			syslog(syslog_pri, "From: %s:%d (%s6) - Message: \"%s\"", addr_str, port,
+			    pname, str);
 		} else {
-			log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname, addr_str, port, str);
+			log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname, addr_str, port,
+			    str);
 		}
 		break;
 	case AF_INET:
 		s_in = (struct sockaddr_in *)src;
 		if (use_syslog) {
-			syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), pname, str);
+			syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"",
+			    inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), pname, str);
 		} else {
-			log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+			log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname,
+			    inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
 		}
 		break;
 	}
 #else
 	s_in = (struct sockaddr_in *)src;
 	if (use_syslog) {
-		syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), pname, str);
+		syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", inet_ntoa(s_in->sin_addr),
+		    ntohs(s_in->sin_port), pname, str);
 	} else {
-		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname,
+		    inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
 	}
 #endif
-
 }
 
 /*
@@ -215,9 +220,9 @@ init_tcp()
 #ifdef PF_INET6
 	/* Setup TCP6 Listener */
 	memset(&t6_sa, 0, sizeof(t6_sa));
-	t6_sa.sin6_port = htons(PORT);
-	t6_sa.sin6_family = AF_INET6;
-	t6_sa.sin6_addr = in6addr_any;
+	t6_sa.sin6_port	    = htons(PORT);
+	t6_sa.sin6_family   = AF_INET6;
+	t6_sa.sin6_addr	    = in6addr_any;
 	t6_sa.sin6_scope_id = 0;
 	if ((t6_sockfd = socket(PF_INET6, SOCK_STREAM, 0)) < 0) {
 		perror("tcp6 socket()");
@@ -231,12 +236,12 @@ init_tcp()
 		perror("tcp6 bind()");
 		return (EXIT_FAILURE);
 	}
-#endif					/* PF6_INET */
+#endif /* PF6_INET */
 
 	/* Setup TCP4 Listener */
 	memset(&t_sa, 0, sizeof(t_sa));
-	t_sa.sin_port = htons(PORT);
-	t_sa.sin_family = AF_INET;
+	t_sa.sin_port	     = htons(PORT);
+	t_sa.sin_family	     = AF_INET;
 	t_sa.sin_addr.s_addr = htonl(INADDR_ANY);
 	if ((t_sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("tcp4 socket()");
@@ -260,9 +265,9 @@ init_udp()
 
 	/* Setup UDP6 Listener */
 	memset(&u6_sa, 0, sizeof(u6_sa));
-	u6_sa.sin6_port = htons(PORT);
-	u6_sa.sin6_family = AF_INET6;
-	u6_sa.sin6_addr = in6addr_any;
+	u6_sa.sin6_port	    = htons(PORT);
+	u6_sa.sin6_family   = AF_INET6;
+	u6_sa.sin6_addr	    = in6addr_any;
 	u6_sa.sin6_scope_id = 0;
 	if ((u6_sockfd = socket(PF_INET6, SOCK_DGRAM, 0)) < 0) {
 		perror("udp6 socket()");
@@ -276,12 +281,12 @@ init_udp()
 		perror("udp6 bind()");
 		return (EXIT_FAILURE);
 	}
-#endif					/* PF_INET6 */
+#endif /* PF_INET6 */
 
 	/* Setup UDP4 Listener */
 	memset(&u_sa, 0, sizeof(u_sa));
-	u_sa.sin_port = htons(PORT);
-	u_sa.sin_family = AF_INET;
+	u_sa.sin_port	     = htons(PORT);
+	u_sa.sin_family	     = AF_INET;
 	u_sa.sin_addr.s_addr = htonl(INADDR_ANY);
 	if ((u_sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("udp4 socket()");
@@ -294,14 +299,14 @@ init_udp()
 	return (EXIT_SUCCESS);
 }
 
-void   *
+void *
 tcp4_handler(void *args)
 {
-	int c;
+	int		   c;
 	struct sockaddr_in t_other;
-	FILE *client;
-	char str[8192];
-	socklen_t sa_len;
+	FILE *		   client;
+	char		   str[8192];
+	socklen_t	   sa_len;
 
 	listen(t_sockfd, BACKLOG);
 
@@ -315,42 +320,44 @@ tcp4_handler(void *args)
 			perror("tcp fdopen()");
 			pthread_exit(NULL);
 		}
-		memset(str, 0, sizeof(str));/* just in case */
+		memset(str, 0, sizeof(str)); /* just in case */
 		fgets(str, sizeof(str), client);
 		process_request(t_other.sin_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
 		fclose(client);
 	}
-	return (args);			/* suppress compiler warning */
+	return (args); /* suppress compiler warning */
 }
 
-void   *
+void *
 udp4_handler(void *args)
 {
-	char str[8192];
+	char		   str[8192];
 	struct sockaddr_in u_other;
-	socklen_t sa_len;
-	ssize_t len;
+	socklen_t	   sa_len;
+	ssize_t		   len;
 
 	sa_len = sizeof(u_other);
 	while (1) {
-		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
-			process_request(u_other.sin_family, (struct sockaddr *)&u_other, SOCK_DGRAM, str);
+		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other,
+			 &sa_len)) > 0) {
+			process_request(u_other.sin_family, (struct sockaddr *)&u_other, SOCK_DGRAM,
+			    str);
 		}
 	}
 
-	return (args);			/* suppress compiler warning */
+	return (args); /* suppress compiler warning */
 }
 
 #ifdef PF_INET6
 
-void   *
+void *
 tcp6_handler(void *args)
 {
-	int c;
+	int		    c;
 	struct sockaddr_in6 t_other;
-	FILE *client;
-	char str[8192];
-	socklen_t sa_len;
+	FILE *		    client;
+	char		    str[8192];
+	socklen_t	    sa_len;
 
 	listen(t6_sockfd, BACKLOG);
 
@@ -364,40 +371,42 @@ tcp6_handler(void *args)
 			perror("tcp6 fdopen()");
 			pthread_exit(NULL);
 		}
-		memset(str, 0, sizeof(str));/* just in case */
+		memset(str, 0, sizeof(str)); /* just in case */
 		fgets(str, sizeof(str), client);
 		process_request(t_other.sin6_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
 		fclose(client);
 	}
-	return (args);			/* suppress compiler warning */
+	return (args); /* suppress compiler warning */
 }
 
-void   *
+void *
 udp6_handler(void *args)
 {
-	char str[8192];
+	char		    str[8192];
 	struct sockaddr_in6 u_other;
-	socklen_t sa_len;
-	ssize_t len;
+	socklen_t	    sa_len;
+	ssize_t		    len;
 
 	sa_len = sizeof(u_other);
 	while (1) {
-		if ((len = recvfrom(u6_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other, &sa_len)) > 0) {
-			process_request(u_other.sin6_family, (struct sockaddr *)&u_other, SOCK_DGRAM, str);
+		if ((len = recvfrom(u6_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other,
+			 &sa_len)) > 0) {
+			process_request(u_other.sin6_family, (struct sockaddr *)&u_other,
+			    SOCK_DGRAM, str);
 		}
 	}
 
-	return (args);			/* suppress compiler warning */
+	return (args); /* suppress compiler warning */
 }
 
-#endif					/* PF_INET6 */
+#endif /* PF_INET6 */
 
 void
 init_logger()
 {
 	if (use_syslog) {
 		/* initialize facility and level parameters */
-		if (syslog_pri == -1)	/* not specidied by user, use default */
+		if (syslog_pri == -1) /* not specidied by user, use default */
 			syslog_pri = LOG_USER | LOG_NOTICE | LOG_PID;
 	} else {
 		/* open a log file in current directory */
@@ -415,11 +424,11 @@ int
 daemon_start()
 {
 	struct sigaction sig_action;
-	sigset_t sig_set;
-	pid_t otherpid;
-	int curPID;
-	pthread_t tcp4_thread, udp4_thread;
-	pthread_t tcp6_thread, udp6_thread;
+	sigset_t	 sig_set;
+	pid_t		 otherpid;
+	int		 curPID;
+	pthread_t	 tcp4_thread, udp4_thread;
+	pthread_t	 tcp6_thread, udp6_thread;
 
 	/* Check if we can acquire the pid file */
 	pfh = pidfile_open(NULL, 0644, &otherpid);
@@ -442,13 +451,13 @@ daemon_start()
 	curPID = fork();
 
 	switch (curPID) {
-	case 0:			/* This process is the child */
+	case 0: /* This process is the child */
 		break;
-	case -1:			/* fork() failed, should exit */
+	case -1: /* fork() failed, should exit */
 		perror("fork");
 		return (EXIT_FAILURE);
-	default:			/* fork() successful, should exit
-					 * (parent) */
+	default: /* fork() successful, should exit
+		  * (parent) */
 		return (EXIT_SUCCESS);
 	}
 
@@ -461,12 +470,12 @@ daemon_start()
 
 	/* Block unnecessary signals */
 	sigemptyset(&sig_set);
-	sigaddset(&sig_set, SIGCHLD);	/* ignore child - i.e. we don't need
-					 * to wait for it */
-	sigaddset(&sig_set, SIGTSTP);	/* ignore tty stop signals */
-	sigaddset(&sig_set, SIGTTOU);	/* ignore tty background writes */
-	sigaddset(&sig_set, SIGTTIN);	/* ignore tty background reads */
-	sigprocmask(SIG_BLOCK, &sig_set, NULL);	/* Block the above specified
+	sigaddset(&sig_set, SIGCHLD); /* ignore child - i.e. we don't need
+				       * to wait for it */
+	sigaddset(&sig_set, SIGTSTP); /* ignore tty stop signals */
+	sigaddset(&sig_set, SIGTTOU); /* ignore tty background writes */
+	sigaddset(&sig_set, SIGTTIN); /* ignore tty background reads */
+	sigprocmask(SIG_BLOCK, &sig_set, NULL); /* Block the above specified
 						 * signals */
 
 	/* Catch necessary signals */
@@ -517,7 +526,7 @@ usage()
 }
 
 static int
-decode(char *name, const CODE * codetab)
+decode(char *name, const CODE *codetab)
 {
 	const CODE *c;
 
@@ -535,18 +544,19 @@ static int
 decodepri(char *s)
 {
 	char *save;
-	int fac, lev;
+	int   fac, lev;
 
-	for (save = s; *s && *s != '.'; ++s);
+	for (save = s; *s && *s != '.'; ++s)
+		;
 	if (*s) {
-		*s = '\0';
+		*s  = '\0';
 		fac = decode(save, facilitynames);
 		if (fac < 0)
 			errx(1, "unknown facility name: %s", save);
 		*s++ = '.';
 	} else {
 		fac = 0;
-		s = save;
+		s   = save;
 	}
 	lev = decode(s, prioritynames);
 	if (lev < 0)
