@@ -51,6 +51,7 @@
 #include <pthread.h>
 #include <pidutil.h>
 
+#include "banned.h"
 #include "logfile.h"
 
 #define	PORT 5060
