@@ -22,12 +22,13 @@
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
-#include <stdio.h>
 #include <err.h>
 #include <errno.h>
+#include <stdio.h>
 #include <sysexits.h>
+
 #include "logfile.h"
 
 /*
@@ -46,14 +47,16 @@ main(void)
 		err(errno, "Failed to verify integrity of log file");
 
 	log_printf(lh, "opened file handle: %d , inode: %llu", lh->fd, lh->ino);
-	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd, lh->ino, lh->mode);
+	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd, lh->ino,
+	    lh->mode);
 
 	log_reopen(&lh);
 	if (!log_verify(lh))
 		err(errno, "Failed to verify integrity of reopened log file");
 
 	log_printf(lh, "reopened file handle: %d , inode: %llu", lh->fd, lh->ino);
-	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd, lh->ino, lh->mode);
+	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd, lh->ino,
+	    lh->mode);
 
 	for (int i = 1; i <= 4; i++)
 		log_tsprintf(lh, "This is a time stamped message %d", i);
