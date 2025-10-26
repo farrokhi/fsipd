@@ -46,17 +46,18 @@ main(void)
 	if (!log_verify(lh))
 		err(errno, "Failed to verify integrity of log file");
 
-	log_printf(lh, "opened file handle: %d , inode: %llu", lh->fd, lh->ino);
-	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd, lh->ino,
-	    lh->mode);
+	log_printf(lh, "opened file handle: %d , inode: %llu", lh->fd, (unsigned long long)lh->ino);
+	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd,
+	    (unsigned long long)lh->ino, lh->mode);
 
 	log_reopen(&lh);
 	if (!log_verify(lh))
 		err(errno, "Failed to verify integrity of reopened log file");
 
-	log_printf(lh, "reopened file handle: %d , inode: %llu", lh->fd, lh->ino);
-	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd, lh->ino,
-	    lh->mode);
+	log_printf(lh, "reopened file handle: %d , inode: %llu", lh->fd,
+	    (unsigned long long)lh->ino);
+	printf("logfile: %s, handle: %d, inode: %llu, mode: %d\n", lh->path, lh->fd,
+	    (unsigned long long)lh->ino, lh->mode);
 
 	for (int i = 1; i <= 4; i++)
 		log_tsprintf(lh, "This is a time stamped message %d", i);
