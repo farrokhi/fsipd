@@ -30,3 +30,17 @@
 
 # Debug files
 *.dSYM/
+
+# Build artifacts
+fsipd
+logfile_test
+tests/unit/test_chomp
+
+# Test files
+test.log
+*.log
+
+# Temporary files
+*~
+.#*
+\#*\#
