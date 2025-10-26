@@ -52,16 +52,33 @@ log_open(const char *path, mode_t mode)
 	}
 
 	/*
-	 * try to create / append the file and make sure it is correctly
-	 * created
+	 * Open file with O_NOFOLLOW to prevent symlink attacks
+	 * Use O_NONBLOCK to avoid blocking on FIFOs, then clear it
 	 */
-	if ((fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC, mode)) == -1)
+	if ((fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC | O_NOFOLLOW | O_NONBLOCK,
+		   mode)) == -1)
 		return (NULL);
-	if (flock(fd, LOCK_EX) == -1) {
+
+	/* Use fstat on opened fd to prevent TOCTOU race */
+	if (fstat(fd, &sb) == -1) {
 		close(fd);
 		return (NULL);
 	}
-	if (stat(filename, &sb) == -1) {
+
+	/* Verify it's a regular file, not a device, FIFO, etc. */
+	if (!S_ISREG(sb.st_mode)) {
+		close(fd);
+		errno = EINVAL;
+		return (NULL);
+	}
+
+	/* Clear O_NONBLOCK now that we've validated the file type */
+	if (fcntl(fd, F_SETFL, O_WRONLY | O_APPEND | O_SYNC) == -1) {
+		close(fd);
+		return (NULL);
+	}
+
+	if (flock(fd, LOCK_EX) == -1) {
 		close(fd);
 		return (NULL);
 	}
