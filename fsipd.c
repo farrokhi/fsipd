@@ -319,15 +319,18 @@ tcp4_handler(void *args)
 		sa_len = sizeof(t_sa);
 		if ((c = accept(t_sockfd, (struct sockaddr *)&t_other, &sa_len)) < 0) {
 			perror("tcp accept()");
-			pthread_exit(NULL);
+			continue;
 		}
 		if ((client = fdopen(c, "r")) == NULL) {
 			perror("tcp fdopen()");
-			pthread_exit(NULL);
+			close(c);
+			continue;
 		}
 		memset(str, 0, sizeof(str)); /* just in case */
-		fgets(str, sizeof(str), client);
-		process_request(t_other.sin_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
+		if (fgets(str, sizeof(str), client) != NULL) {
+			process_request(t_other.sin_family, (struct sockaddr *)&t_other, SOCK_STREAM,
+			    str);
+		}
 		fclose(client);
 	}
 	return (args); /* suppress compiler warning */
@@ -343,11 +346,14 @@ udp4_handler(void *args)
 
 	sa_len = sizeof(u_other);
 	while (1) {
-		if ((len = recvfrom(u_sockfd, str, sizeof(str) - 1, 0, (struct sockaddr *)&u_other,
-			 &sa_len)) > 0) {
+		len = recvfrom(u_sockfd, str, sizeof(str) - 1, 0, (struct sockaddr *)&u_other,
+		    &sa_len);
+		if (len > 0) {
 			str[len] = '\0';
 			process_request(u_other.sin_family, (struct sockaddr *)&u_other, SOCK_DGRAM,
 			    str);
+		} else if (len < 0) {
+			perror("udp4 recvfrom()");
 		}
 	}
 
@@ -371,15 +377,18 @@ tcp6_handler(void *args)
 		sa_len = sizeof(t6_sa);
 		if ((c = accept(t6_sockfd, (struct sockaddr *)&t_other, &sa_len)) < 0) {
 			perror("tcp6 accept()");
-			pthread_exit(NULL);
+			continue;
 		}
 		if ((client = fdopen(c, "r")) == NULL) {
 			perror("tcp6 fdopen()");
-			pthread_exit(NULL);
+			close(c);
+			continue;
 		}
 		memset(str, 0, sizeof(str)); /* just in case */
-		fgets(str, sizeof(str), client);
-		process_request(t_other.sin6_family, (struct sockaddr *)&t_other, SOCK_STREAM, str);
+		if (fgets(str, sizeof(str), client) != NULL) {
+			process_request(t_other.sin6_family, (struct sockaddr *)&t_other,
+			    SOCK_STREAM, str);
+		}
 		fclose(client);
 	}
 	return (args); /* suppress compiler warning */
@@ -395,11 +404,14 @@ udp6_handler(void *args)
 
 	sa_len = sizeof(u_other);
 	while (1) {
-		if ((len = recvfrom(u6_sockfd, str, sizeof(str) - 1, 0, (struct sockaddr *)&u_other,
-			 &sa_len)) > 0) {
+		len = recvfrom(u6_sockfd, str, sizeof(str) - 1, 0, (struct sockaddr *)&u_other,
+		    &sa_len);
+		if (len > 0) {
 			str[len] = '\0';
 			process_request(u_other.sin6_family, (struct sockaddr *)&u_other,
 			    SOCK_DGRAM, str);
+		} else if (len < 0) {
+			perror("udp6 recvfrom()");
 		}
 	}
 
