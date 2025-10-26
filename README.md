@@ -1,4 +1,4 @@
-[![CI](https://github.com/farrokhi/fsipd/workflows/CI/badge.svg)](https://github.com/farrokhi/fsipd/actions)
+[![Test](https://github.com/farrokhi/fsipd/workflows/Test/badge.svg)](https://github.com/farrokhi/fsipd/actions)
 
 # fsipd
 
