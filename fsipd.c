@@ -191,23 +191,26 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 		break;
 	case AF_INET:
 		s_in = (struct sockaddr_in *)src;
+		inet_ntop(af, &s_in->sin_addr, addr_str, sizeof(addr_str));
+		port = ntohs(s_in->sin_port);
 		if (use_syslog) {
-			syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"",
-			    inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), pname, str);
+			syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", addr_str, port,
+			    pname, str);
 		} else {
-			log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname,
-			    inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+			log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, addr_str, port,
+			    str);
 		}
 		break;
 	}
 #else
 	s_in = (struct sockaddr_in *)src;
+	inet_ntop(af, &s_in->sin_addr, addr_str, sizeof(addr_str));
+	port = ntohs(s_in->sin_port);
 	if (use_syslog) {
-		syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", inet_ntoa(s_in->sin_addr),
-		    ntohs(s_in->sin_port), pname, str);
+		syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", addr_str, port, pname,
+		    str);
 	} else {
-		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname,
-		    inet_ntoa(s_in->sin_addr), ntohs(s_in->sin_port), str);
+		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, addr_str, port, str);
 	}
 #endif
 }
