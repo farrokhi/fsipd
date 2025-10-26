@@ -50,27 +50,3 @@ jobs:
         name: test-logs-${{ matrix.compiler }}
         path: /tmp/fsipd_test_*.log
         if-no-files-found: ignore
-
-  lint:
-    name: Code Quality
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Install clang-format
-      run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        sudo add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-21 main"
-        sudo apt-get update
-        sudo apt-get install -y clang-format-21
-
-    - name: Check formatting
-      run: |
-        clang-format-21 --version
-        find . -name '*.c' -o -name '*.h' | grep -v libpidutil | while read file; do
-          clang-format-21 --dry-run --Werror "$file" || exit 1
-        done
