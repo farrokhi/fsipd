@@ -71,7 +71,7 @@ log_open(const char *path, mode_t mode)
 	lh->dev	 = sb.st_dev;
 	lh->ino	 = sb.st_ino;
 	lh->mode = sb.st_mode;
-	strncpy(lh->path, filename, strnlen(filename, MAXPATHLEN + 1));
+	snprintf(lh->path, sizeof(lh->path), "%s", filename);
 
 	return (lh);
 }
