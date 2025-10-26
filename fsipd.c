@@ -340,8 +340,9 @@ udp4_handler(void *args)
 
 	sa_len = sizeof(u_other);
 	while (1) {
-		if ((len = recvfrom(u_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other,
+		if ((len = recvfrom(u_sockfd, str, sizeof(str) - 1, 0, (struct sockaddr *)&u_other,
 			 &sa_len)) > 0) {
+			str[len] = '\0';
 			process_request(u_other.sin_family, (struct sockaddr *)&u_other, SOCK_DGRAM,
 			    str);
 		}
@@ -391,8 +392,9 @@ udp6_handler(void *args)
 
 	sa_len = sizeof(u_other);
 	while (1) {
-		if ((len = recvfrom(u6_sockfd, str, sizeof(str), 0, (struct sockaddr *)&u_other,
+		if ((len = recvfrom(u6_sockfd, str, sizeof(str) - 1, 0, (struct sockaddr *)&u_other,
 			 &sa_len)) > 0) {
+			str[len] = '\0';
 			process_request(u_other.sin6_family, (struct sockaddr *)&u_other,
 			    SOCK_DGRAM, str);
 		}
