@@ -75,7 +75,11 @@ char	     *pidfilename = NULL;
 int	      syslog_pri  = -1;
 
 /* Self-pipe for async-signal-safe signal handling */
-static int signal_pipe[2] = { -1, -1 };
+static int		     signal_pipe[2] = { -1, -1 };
+static volatile sig_atomic_t shutdown_flag	 = 0;
+
+/* Mutex to protect log access from concurrent threads */
+static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct sockaddr_in t_sa, u_sa;
 int		   t_sockfd, u_sockfd;
@@ -115,24 +119,39 @@ chomp(char *s)
 
 /*
  * Prepare for a clean shutdown
+ * Safe to call multiple times (idempotent)
  */
 void
 daemon_shutdown()
 {
-	pidfile_remove(pfh);
-	if (!use_syslog)
-		log_close(lfh);
+	static sig_atomic_t already_shutdown = 0;
 
-	/* Free allocated strings */
-	if (logfilename != NULL)
+	/* Prevent repeated execution */
+	if (already_shutdown)
+		return;
+	already_shutdown = 1;
+
+	pidfile_remove(pfh);
+	if (!use_syslog) {
+		log_close(lfh);
+		lfh = NULL;
+	}
+
+	/* Free allocated strings and set to NULL to prevent double-free */
+	if (logfilename != NULL) {
 		free(logfilename);
-	if (pidfilename != NULL)
+		logfilename = NULL;
+	}
+	if (pidfilename != NULL) {
 		free(pidfilename);
+		pidfilename = NULL;
+	}
 }
 
 /*
  * Async-signal-safe signal handler
  * Only writes signal number to pipe for main loop to process
+ * Pipe is non-blocking so write won't deadlock if pipe is full
  */
 void
 signal_handler(int sig)
@@ -140,9 +159,9 @@ signal_handler(int sig)
 	unsigned char sig_byte = (unsigned char)sig;
 	ssize_t	      ret;
 
-	/* Write is async-signal-safe, just notify main loop */
+	/* Write is async-signal-safe, pipe is non-blocking (EAGAIN is fine) */
 	ret = write(signal_pipe[1], &sig_byte, 1);
-	(void)ret; /* Ignore errors - nothing safe to do in signal handler */
+	(void)ret; /* Ignore all errors including EAGAIN */
 }
 
 /*
@@ -154,12 +173,21 @@ process_signal(unsigned char sig)
 {
 	switch (sig) {
 	case SIGHUP:
-		if (!use_syslog)
+		if (!use_syslog) {
+			/* Acquire mutex to prevent race with worker threads */
+			pthread_mutex_lock(&log_mutex);
 			log_reopen(&lfh);
+			pthread_mutex_unlock(&log_mutex);
+		}
 		break;
 	case SIGINT:
 	case SIGTERM:
+		/* Set flag first to stop new logging attempts */
+		shutdown_flag = 1;
+		/* Acquire mutex to ensure no thread is in log_printf */
+		pthread_mutex_lock(&log_mutex);
 		daemon_shutdown();
+		pthread_mutex_unlock(&log_mutex);
 		return true; /* Signal shutdown */
 	default:
 		break;
@@ -208,8 +236,13 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 			syslog(syslog_pri, "From: %s:%d (%s6) - Message: \"%s\"", addr_str, port,
 			    pname, str);
 		} else {
-			log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname, addr_str, port,
-			    str);
+			pthread_mutex_lock(&log_mutex);
+			/* Re-check shutdown_flag after acquiring mutex to prevent TOCTOU */
+			if (!shutdown_flag && lfh != NULL) {
+				log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname,
+				    addr_str, port, str);
+			}
+			pthread_mutex_unlock(&log_mutex);
 		}
 		break;
 	case AF_INET:
@@ -220,8 +253,13 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 			syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", addr_str, port,
 			    pname, str);
 		} else {
-			log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, addr_str, port,
-			    str);
+			pthread_mutex_lock(&log_mutex);
+			/* Re-check shutdown_flag after acquiring mutex to prevent TOCTOU */
+			if (!shutdown_flag && lfh != NULL) {
+				log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname,
+				    addr_str, port, str);
+			}
+			pthread_mutex_unlock(&log_mutex);
 		}
 		break;
 	}
@@ -233,7 +271,13 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 		syslog(syslog_pri, "From: %s:%d (%s4) - Message: \"%s\"", addr_str, port, pname,
 		    str);
 	} else {
-		log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, addr_str, port, str);
+		pthread_mutex_lock(&log_mutex);
+		/* Re-check shutdown_flag after acquiring mutex to prevent TOCTOU */
+		if (!shutdown_flag && lfh != NULL) {
+			log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, addr_str, port,
+			    str);
+		}
+		pthread_mutex_unlock(&log_mutex);
 	}
 #endif
 }
@@ -478,6 +522,12 @@ daemon_start()
 	/* Create self-pipe for signal handling */
 	if (pipe(signal_pipe) == -1) {
 		err(EXIT_FAILURE, "Cannot create signal pipe");
+	}
+
+	/* Set both ends non-blocking to prevent signal handler deadlock */
+	if (fcntl(signal_pipe[0], F_SETFL, O_NONBLOCK) == -1 ||
+	    fcntl(signal_pipe[1], F_SETFL, O_NONBLOCK) == -1) {
+		err(EXIT_FAILURE, "Cannot set signal pipe non-blocking");
 	}
 
 	/* Check if we can acquire the pid file */

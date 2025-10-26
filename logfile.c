@@ -124,16 +124,23 @@ log_isopen(const log_t *log)
 void
 log_reopen(log_t **log)
 {
+	log_t *oldlog;
 	log_t *newlog;
 
 	if (!log_isopen(*log))
 		return;
 
-	newlog = malloc(sizeof(log_t));
-	memcpy(newlog, *log, sizeof(log_t));
-	log_close(*log);
-	*log = log_open(newlog->path, newlog->mode);
-	free(newlog);
+	oldlog = *log;
+
+	/* Open new log first, keeping old one valid */
+	newlog = log_open(oldlog->path, oldlog->mode);
+
+	/* Atomically swap: old log becomes invalid only after new log is ready */
+	*log = newlog;
+
+	/* Now safe to close old log */
+	if (oldlog != NULL)
+		log_close(oldlog);
 }
 
 /*
