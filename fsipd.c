@@ -74,6 +74,9 @@ char	     *logfilename = NULL;
 char	     *pidfilename = NULL;
 int	      syslog_pri  = -1;
 
+/* Self-pipe for async-signal-safe signal handling */
+static int signal_pipe[2] = { -1, -1 };
+
 struct sockaddr_in t_sa, u_sa;
 int		   t_sockfd, u_sockfd;
 
@@ -128,26 +131,40 @@ daemon_shutdown()
 }
 
 /*
- * Act upon receiving signals
+ * Async-signal-safe signal handler
+ * Only writes signal number to pipe for main loop to process
  */
 void
 signal_handler(int sig)
 {
-	switch (sig) {
+	unsigned char sig_byte = (unsigned char)sig;
+	ssize_t	      ret;
 
+	/* Write is async-signal-safe, just notify main loop */
+	ret = write(signal_pipe[1], &sig_byte, 1);
+	(void)ret; /* Ignore errors - nothing safe to do in signal handler */
+}
+
+/*
+ * Process signals received via self-pipe (called from main loop)
+ * Safe to call non-async-signal-safe functions here
+ */
+static bool
+process_signal(unsigned char sig)
+{
+	switch (sig) {
 	case SIGHUP:
 		if (!use_syslog)
-			log_reopen(&lfh); /* necessary for log file
-					   * rotation */
+			log_reopen(&lfh);
 		break;
 	case SIGINT:
 	case SIGTERM:
 		daemon_shutdown();
-		exit(EXIT_SUCCESS);
-		break;
+		return true; /* Signal shutdown */
 	default:
 		break;
 	}
+	return false; /* Continue running */
 }
 
 void
@@ -458,6 +475,11 @@ daemon_start()
 	pthread_t	 tcp4_thread, udp4_thread;
 	pthread_t	 tcp6_thread, udp6_thread;
 
+	/* Create self-pipe for signal handling */
+	if (pipe(signal_pipe) == -1) {
+		err(EXIT_FAILURE, "Cannot create signal pipe");
+	}
+
 	/* Check if we can acquire the pid file */
 	pfh = pidfile_open(pidfilename, 0644, &otherpid);
 
@@ -530,15 +552,39 @@ daemon_start()
 #endif
 
 	/*
-	 * Wait for threads to terminate, which normally shouldn't ever
-	 * happen
+	 * Main event loop: monitor signal pipe for shutdown/reload requests
+	 * Threads run independently and normally never terminate
 	 */
-	pthread_join(tcp4_thread, NULL);
-	pthread_join(udp4_thread, NULL);
-#ifdef PF_INET6
-	pthread_join(tcp6_thread, NULL);
-	pthread_join(udp6_thread, NULL);
-#endif
+	while (1) {
+		fd_set	      read_fds;
+		unsigned char sig_byte;
+		ssize_t	      n;
+
+		FD_ZERO(&read_fds);
+		FD_SET(signal_pipe[0], &read_fds);
+
+		/* Wait for signal notification (no timeout) */
+		if (select(signal_pipe[0] + 1, &read_fds, NULL, NULL, NULL) == -1) {
+			if (errno == EINTR)
+				continue; /* Interrupted by signal, retry */
+			break;	  /* Other error, exit */
+		}
+
+		/* Read signal from pipe */
+		n = read(signal_pipe[0], &sig_byte, 1);
+		if (n <= 0)
+			continue;
+
+		/* Process signal and check for shutdown */
+		if (process_signal(sig_byte)) {
+			/* Shutdown requested */
+			break;
+		}
+	}
+
+	/* Cleanup */
+	close(signal_pipe[0]);
+	close(signal_pipe[1]);
 
 	return (EXIT_SUCCESS);
 }
