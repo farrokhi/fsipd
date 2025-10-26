@@ -604,11 +604,7 @@ main(int argc, char *argv[])
 			use_syslog = true;
 			break;
 		case 'p':
-			if (use_syslog) {
-				syslog_pri = decodepri(optarg) | LOG_PID;
-			} else {
-				errx(EX_USAGE, "you need to specify \"-s\".");
-			}
+			syslog_pri = decodepri(optarg) | LOG_PID;
 			break;
 		case 'l':
 			logfilename = strdup(optarg);
