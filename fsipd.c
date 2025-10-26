@@ -119,6 +119,12 @@ daemon_shutdown()
 	pidfile_remove(pfh);
 	if (!use_syslog)
 		log_close(lfh);
+
+	/* Free allocated strings */
+	if (logfilename != NULL)
+		free(logfilename);
+	if (pidfilename != NULL)
+		free(pidfilename);
 }
 
 /*
