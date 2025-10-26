@@ -84,6 +84,10 @@ log_open(const char *path, mode_t mode)
 	}
 	/* initialize data structure */
 	lh = calloc(1, sizeof(log_t));
+	if (lh == NULL) {
+		close(fd);
+		return (NULL);
+	}
 
 	lh->fd	 = fd;
 	lh->dev	 = sb.st_dev;
