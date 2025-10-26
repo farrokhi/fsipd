@@ -1,25 +1,70 @@
-[![Build Status](https://travis-ci.org/farrokhi/fsipd.svg?branch=master)](https://travis-ci.org/farrokhi/fsipd)
+[![CI](https://github.com/farrokhi/fsipd/workflows/CI/badge.svg)](https://github.com/farrokhi/fsipd/actions)
 
 # fsipd
 
-fsipd - Fake SIP Daemon
+Fake SIP Daemon - A minimal SIP honeypot
 
-fsipd is a minimal SIP honeypot. It listens on TCP/UDP 5060 (IPv4 as well as IPv6 if available) and logs all incoming SIP requests along with SRC/DST IP Addresses and Port numbers in CSV format.
+## Overview
 
-## LOG Format
+fsipd is a lightweight SIP honeypot that listens on TCP/UDP port 5060 for both IPv4 and IPv6 (when available). It logs all incoming SIP requests with source/destination IP addresses and port numbers in CSV format.
 
-Incoming packets are logged in CSV format in `fsipd.log`. Log format is described below:
+## Features
+
+- Dual protocol support (TCP and UDP)
+- IPv4 and IPv6 support
+- Multi-threaded architecture
+- CSV logging for easy analysis
+- Syslog integration option
+- Signal-safe log rotation (SIGHUP)
+- Sanitizes multiline messages to preserve CSV integrity
+- Configurable log and PID file paths
+
+## Log Format
+
+Logs are written in CSV format with the following fields:
 
 ```
 epoch timestamp, protocol, src ip, src port, "message"
 ```
 
-example:
+Example:
 
 ```
-1445775973,UDP4,127.0.0.1,50751,"INVITE"
+1445775973,UDP4,127.0.0.1,50751,"INVITE sip:user@example.com SIP/2.0"
+1445775974,TCP6,::1,54321,"REGISTER sip:example.com SIP/2.0"
 ```
+
+Note: Multiline SIP messages are sanitized by replacing newlines and control characters with spaces to maintain CSV format integrity.
+
+## Usage
+
+```
+fsipd [-h] [-l logfile] [-s] [-p priority] [-f pidfile]
+    -h: Show help message
+    -s: Use syslog instead of local log file
+    -p: Syslog priority (default: user.notice)
+    -l: Specify output log filename (default: fsipd.log)
+    -f: Specify PID file path (default: /var/run/fsipd.pid)
+```
+
+## Building
+
+```bash
+make
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+make test
+```
+
+This runs both unit tests and integration tests.
 
 ## Dependencies
 
-This program depends on [libpidutil](https://github.com/farrokhi/libpidutil)
+This program depends on:
+- [libpidutil](https://github.com/farrokhi/libpidutil)
+- pthread library
