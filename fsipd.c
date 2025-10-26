@@ -398,6 +398,8 @@ tcp4_handler(void *args)
 			process_request(t_other.sin_family, (struct sockaddr *)&t_other,
 			    SOCK_STREAM, str);
 		}
+		/* Shutdown write end to signal FIN, avoiding CLOSE_WAIT */
+		shutdown(c, SHUT_WR);
 		fclose(client);
 	}
 	return (args); /* suppress compiler warning */
@@ -456,6 +458,8 @@ tcp6_handler(void *args)
 			process_request(t_other.sin6_family, (struct sockaddr *)&t_other,
 			    SOCK_STREAM, str);
 		}
+		/* Shutdown write end to signal FIN, avoiding CLOSE_WAIT */
+		shutdown(c, SHUT_WR);
 		fclose(client);
 	}
 	return (args); /* suppress compiler warning */
