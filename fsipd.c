@@ -49,9 +49,9 @@
 #include <strings.h>
 #include <sysexits.h>
 #include <unistd.h>
-#define SYSLOG_NAMES
 #include <pidutil.h>
 #include <pthread.h>
+#define SYSLOG_NAMES
 #include <syslog.h>
 
 #include "banned.h"
