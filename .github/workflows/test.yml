@@ -62,11 +62,15 @@ jobs:
         submodules: recursive
 
     - name: Install clang-format
-      run: sudo apt-get update && sudo apt-get install -y clang-format
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-21 main"
+        sudo apt-get update
+        sudo apt-get install -y clang-format-21
 
     - name: Check formatting
       run: |
-        clang-format --version
+        clang-format-21 --version
         find . -name '*.c' -o -name '*.h' | grep -v libpidutil | while read file; do
-          clang-format --dry-run --Werror "$file" || exit 1
+          clang-format-21 --dry-run --Werror "$file" || exit 1
         done
