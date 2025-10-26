@@ -42,11 +42,13 @@ log_open(const char *path, mode_t mode)
 	log_t	   *lh;
 	struct stat sb;
 	char	   *filename;
+	char	   *allocated_filename = NULL;
 	int	    fd;
 
 	if (path == NULL) {
-		if (asprintf(&filename, "%s/%s.log", LOGPATH, _PROGNAME) == -1)
+		if (asprintf(&allocated_filename, "%s/%s.log", LOGPATH, _PROGNAME) == -1)
 			return (NULL);
+		filename = allocated_filename;
 	} else {
 		filename = (char *)path;
 	}
@@ -56,18 +58,22 @@ log_open(const char *path, mode_t mode)
 	 * Use O_NONBLOCK to avoid blocking on FIFOs, then clear it
 	 */
 	if ((fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC | O_NOFOLLOW | O_NONBLOCK,
-		   mode)) == -1)
+		   mode)) == -1) {
+		free(allocated_filename);
 		return (NULL);
+	}
 
 	/* Use fstat on opened fd to prevent TOCTOU race */
 	if (fstat(fd, &sb) == -1) {
 		close(fd);
+		free(allocated_filename);
 		return (NULL);
 	}
 
 	/* Verify it's a regular file, not a device, FIFO, etc. */
 	if (!S_ISREG(sb.st_mode)) {
 		close(fd);
+		free(allocated_filename);
 		errno = EINVAL;
 		return (NULL);
 	}
@@ -75,17 +81,20 @@ log_open(const char *path, mode_t mode)
 	/* Clear O_NONBLOCK now that we've validated the file type */
 	if (fcntl(fd, F_SETFL, O_WRONLY | O_APPEND | O_SYNC) == -1) {
 		close(fd);
+		free(allocated_filename);
 		return (NULL);
 	}
 
 	if (flock(fd, LOCK_EX) == -1) {
 		close(fd);
+		free(allocated_filename);
 		return (NULL);
 	}
 	/* initialize data structure */
 	lh = calloc(1, sizeof(log_t));
 	if (lh == NULL) {
 		close(fd);
+		free(allocated_filename);
 		return (NULL);
 	}
 
@@ -94,6 +103,9 @@ log_open(const char *path, mode_t mode)
 	lh->ino	 = sb.st_ino;
 	lh->mode = sb.st_mode;
 	snprintf(lh->path, sizeof(lh->path), "%s", filename);
+
+	/* Free temporary buffer after copying to struct */
+	free(allocated_filename);
 
 	return (lh);
 }
