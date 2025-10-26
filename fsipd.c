@@ -51,11 +51,11 @@
 #include <unistd.h>
 #include <pidutil.h>
 #include <pthread.h>
-#define SYSLOG_NAMES
 #include <syslog.h>
 
 #include "banned.h"
 #include "logfile.h"
+#include "syslog_names.h"
 
 #define PORT 5060
 #define BACKLOG 1024
