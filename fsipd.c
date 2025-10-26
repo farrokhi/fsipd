@@ -67,11 +67,11 @@
 /*
  * Globals
  */
-log_t *	      lfh;
+log_t	     *lfh;
 struct pidfh *pfh;
 bool	      use_syslog  = false;
-char *	      logfilename = NULL;
-char *	      pidfilename = NULL;
+char	     *logfilename = NULL;
+char	     *pidfilename = NULL;
 int	      syslog_pri  = -1;
 
 struct sockaddr_in t_sa, u_sa;
@@ -147,8 +147,8 @@ signal_handler(int sig)
 void
 process_request(int af, struct sockaddr *src, int proto, char *str)
 {
-	char *		    p_names[] = { "TCP", "UDP", "RAW", "UNKNOWN" };
-	char *		    pname;
+	char		   *p_names[] = { "TCP", "UDP", "RAW", "UNKNOWN" };
+	char		   *pname;
 	uint16_t	    port;
 	char		    addr_str[46];
 	struct sockaddr_in *s_in;
@@ -309,7 +309,7 @@ tcp4_handler(void *args)
 {
 	int		   c;
 	struct sockaddr_in t_other;
-	FILE *		   client;
+	FILE		  *client;
 	char		   str[8192];
 	socklen_t	   sa_len;
 
@@ -361,7 +361,7 @@ tcp6_handler(void *args)
 {
 	int		    c;
 	struct sockaddr_in6 t_other;
-	FILE *		    client;
+	FILE		   *client;
 	char		    str[8192];
 	socklen_t	    sa_len;
 
@@ -477,11 +477,11 @@ daemon_start()
 
 	/* Block unnecessary signals */
 	sigemptyset(&sig_set);
-	sigaddset(&sig_set, SIGCHLD); /* ignore child - i.e. we don't need
-				       * to wait for it */
-	sigaddset(&sig_set, SIGTSTP); /* ignore tty stop signals */
-	sigaddset(&sig_set, SIGTTOU); /* ignore tty background writes */
-	sigaddset(&sig_set, SIGTTIN); /* ignore tty background reads */
+	sigaddset(&sig_set, SIGCHLD);		/* ignore child - i.e. we don't need
+						 * to wait for it */
+	sigaddset(&sig_set, SIGTSTP);		/* ignore tty stop signals */
+	sigaddset(&sig_set, SIGTTOU);		/* ignore tty background writes */
+	sigaddset(&sig_set, SIGTTIN);		/* ignore tty background reads */
 	sigprocmask(SIG_BLOCK, &sig_set, NULL); /* Block the above specified
 						 * signals */
 

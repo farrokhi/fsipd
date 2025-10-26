@@ -39,9 +39,9 @@
 log_t *
 log_open(const char *path, mode_t mode)
 {
-	log_t *	    lh;
+	log_t	   *lh;
 	struct stat sb;
-	char *	    filename;
+	char	   *filename;
 	int	    fd;
 
 	if (path == NULL) {
@@ -129,8 +129,8 @@ log_printf(const log_t *log, const char *format, ...)
 		return;
 
 	va_list args;
-	char *	message;
-	char *	newline = "\n";
+	char   *message;
+	char   *newline = "\n";
 
 	va_start(args, format);
 	vasprintf(&message, format, args);
@@ -152,12 +152,12 @@ log_tsprintf(const log_t *log, const char *format, ...)
 		return;
 
 	va_list	   args;
-	char *	   message;
+	char	  *message;
 	char	   s_time[30];
 	time_t	   now;
 	struct tm *ltime;
 	size_t	   tsize;
-	char *	   newline = "\n";
+	char	  *newline = "\n";
 
 	va_start(args, format);
 	vasprintf(&message, format, args);
