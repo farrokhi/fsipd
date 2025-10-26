@@ -41,6 +41,8 @@
 #include <errno.h>
 #include <getopt.h>
 #include <netdb.h>
+#include <pidutil.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -48,10 +50,8 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <sysexits.h>
-#include <unistd.h>
-#include <pidutil.h>
-#include <pthread.h>
 #include <syslog.h>
+#include <unistd.h>
 
 #include "banned.h"
 #include "logfile.h"
@@ -328,8 +328,8 @@ tcp4_handler(void *args)
 		}
 		memset(str, 0, sizeof(str)); /* just in case */
 		if (fgets(str, sizeof(str), client) != NULL) {
-			process_request(t_other.sin_family, (struct sockaddr *)&t_other, SOCK_STREAM,
-			    str);
+			process_request(t_other.sin_family, (struct sockaddr *)&t_other,
+			    SOCK_STREAM, str);
 		}
 		fclose(client);
 	}
