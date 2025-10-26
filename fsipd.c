@@ -71,6 +71,7 @@ log_t *	      lfh;
 struct pidfh *pfh;
 bool	      use_syslog  = false;
 char *	      logfilename = NULL;
+char *	      pidfilename = NULL;
 int	      syslog_pri  = -1;
 
 struct sockaddr_in t_sa, u_sa;
@@ -432,7 +433,7 @@ daemon_start()
 	pthread_t	 tcp6_thread, udp6_thread;
 
 	/* Check if we can acquire the pid file */
-	pfh = pidfile_open(NULL, 0644, &otherpid);
+	pfh = pidfile_open(pidfilename, 0644, &otherpid);
 
 	if (pfh == NULL) {
 		if (errno == EEXIST) {
@@ -519,11 +520,12 @@ daemon_start()
 void
 usage()
 {
-	printf("usage: fsipd [-h] [-l logfile] [-s] [-p priority] \n");
+	printf("usage: fsipd [-h] [-l logfile] [-s] [-p priority] [-f pidfile]\n");
 	printf("\t-h: this message\n");
 	printf("\t-s: use syslog instead of local log file\n");
 	printf("\t-p: syslog priotiry (default: user.notice)\n");
 	printf("\t-l: specify output log filename (default: fsipd.log)\n");
+	printf("\t-f: specify pid file path (default: /var/run/fsipd.pid)\n");
 }
 
 static int
@@ -570,7 +572,7 @@ main(int argc, char *argv[])
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "hl:sp:")) != -1) {
+	while ((opt = getopt(argc, argv, "hl:sp:f:")) != -1) {
 		switch (opt) {
 		case 's':
 			use_syslog = true;
@@ -584,6 +586,9 @@ main(int argc, char *argv[])
 			break;
 		case 'l':
 			logfilename = strdup(optarg);
+			break;
+		case 'f':
+			pidfilename = strdup(optarg);
 			break;
 		case 'h':
 			usage();
