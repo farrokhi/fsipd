@@ -319,6 +319,74 @@ test_special_characters() {
     return 0
 }
 
+# Test: Multiline message handling
+test_multiline_messages() {
+    log_info "Test: Multiline message handling..."
+
+    if ! check_netcat; then
+        return 0
+    fi
+
+    # Send multiline SIP message via UDP
+    printf "INVITE sip:user@example.com SIP/2.0\r\nVia: SIP/2.0/UDP test\r\n\r\n" | nc -u -w1 127.0.0.1 5060 2>/dev/null || true
+    sleep "$MESSAGE_TIMEOUT"
+
+    # Log should contain the message on a single line
+    TESTS_RUN=$((TESTS_RUN + 1))
+    LINE_COUNT=$(wc -l < "$TEST_LOG" 2>/dev/null | tr -d ' ')
+    EXPECTED_LINES=1
+
+    # Account for previous test messages
+    if [ -f "$TEST_LOG" ]; then
+        # Check that the last line contains both parts of the message
+        LAST_LINE=$(tail -1 "$TEST_LOG")
+        if echo "$LAST_LINE" | grep -q "INVITE" && echo "$LAST_LINE" | grep -q "Via"; then
+            log_pass "Multiline message on single CSV line"
+        else
+            log_fail "Multiline message not properly sanitized"
+            return 1
+        fi
+
+        # Verify no embedded newlines broke CSV
+        if awk -F, 'NF != 5 {exit 1}' "$TEST_LOG" 2>/dev/null; then
+            log_pass "CSV format preserved with multiline input"
+        else
+            log_fail "CSV format broken by multiline message"
+            return 1
+        fi
+    else
+        log_fail "Log file not found"
+        return 1
+    fi
+
+    return 0
+}
+
+# Test: Control character sanitization
+test_control_characters() {
+    log_info "Test: Control character sanitization..."
+
+    if ! check_netcat; then
+        return 0
+    fi
+
+    # Send message with control characters
+    printf "OPTIONS\x01\x02\x1fsip:test@example.com SIP/2.0\n" | nc -u -w1 127.0.0.1 5060 2>/dev/null || true
+    sleep "$MESSAGE_TIMEOUT"
+
+    assert_log_contains "OPTIONS" || return 1
+
+    # Verify CSV format is still valid
+    TESTS_RUN=$((TESTS_RUN + 1))
+    if awk -F, 'NF != 5 {exit 1}' "$TEST_LOG" 2>/dev/null; then
+        log_pass "CSV format preserved with control characters"
+        return 0
+    else
+        log_fail "CSV format broken by control characters"
+        return 1
+    fi
+}
+
 # Test: Daemon shutdown
 test_daemon_shutdown() {
     log_info "Test: Daemon shutdown..."
@@ -357,6 +425,8 @@ main() {
     test_log_format
     test_concurrent_connections
     test_special_characters
+    test_multiline_messages
+    test_control_characters
     test_daemon_shutdown
 
     # Print summary

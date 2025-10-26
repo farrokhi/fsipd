@@ -58,7 +58,7 @@ log_open(const char *path, mode_t mode)
 	 * Use O_NONBLOCK to avoid blocking on FIFOs, then clear it
 	 */
 	if ((fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC | O_NOFOLLOW | O_NONBLOCK,
-		   mode)) == -1) {
+		 mode)) == -1) {
 		free(allocated_filename);
 		return (NULL);
 	}

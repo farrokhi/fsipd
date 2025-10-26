@@ -76,7 +76,7 @@ int	      syslog_pri  = -1;
 
 /* Self-pipe for async-signal-safe signal handling */
 static int		     signal_pipe[2] = { -1, -1 };
-static volatile sig_atomic_t shutdown_flag	 = 0;
+static volatile sig_atomic_t shutdown_flag  = 0;
 
 /* Mutex to protect log access from concurrent threads */
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -115,6 +115,45 @@ chomp(char *s)
 	s[i] = '\0';
 
 	return i;
+}
+
+/*
+ * Sanitize message for CSV output
+ * Replaces newlines, carriage returns, and control characters with spaces
+ * Then trims leading and trailing whitespace
+ */
+void
+sanitize_message(char *s)
+{
+	char *p;
+	char *start;
+	int   len;
+
+	/* Replace embedded newlines and control chars with spaces */
+	for (p = s; *p != '\0'; p++) {
+		if (*p == '\n' || *p == '\r' || (*p < 32 && *p != '\t')) {
+			*p = ' ';
+		}
+	}
+
+	/* Trim leading spaces */
+	start = s;
+	while (isspace(*start))
+		start++;
+
+	/* Shift string left if needed */
+	if (start != s) {
+		p = s;
+		while (*start != '\0')
+			*p++ = *start++;
+		*p = '\0';
+	}
+
+	/* Trim trailing spaces */
+	len = strlen(s);
+	while (len > 0 && isspace(s[len - 1]))
+		len--;
+	s[len] = '\0';
 }
 
 /*
@@ -224,7 +263,7 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 		;
 	}
 
-	chomp(str);
+	sanitize_message(str);
 
 #ifdef PF_INET6
 	switch (af) {
@@ -239,8 +278,8 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 			pthread_mutex_lock(&log_mutex);
 			/* Re-check shutdown_flag after acquiring mutex to prevent TOCTOU */
 			if (!shutdown_flag && lfh != NULL) {
-				log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname,
-				    addr_str, port, str);
+				log_printf(lfh, "%ld,%s6,%s,%d,\"%s\"", time(NULL), pname, addr_str,
+				    port, str);
 			}
 			pthread_mutex_unlock(&log_mutex);
 		}
@@ -256,8 +295,8 @@ process_request(int af, struct sockaddr *src, int proto, char *str)
 			pthread_mutex_lock(&log_mutex);
 			/* Re-check shutdown_flag after acquiring mutex to prevent TOCTOU */
 			if (!shutdown_flag && lfh != NULL) {
-				log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname,
-				    addr_str, port, str);
+				log_printf(lfh, "%ld,%s4,%s,%d,\"%s\"", time(NULL), pname, addr_str,
+				    port, str);
 			}
 			pthread_mutex_unlock(&log_mutex);
 		}
@@ -621,7 +660,7 @@ daemon_start()
 		if (select(signal_pipe[0] + 1, &read_fds, NULL, NULL, NULL) == -1) {
 			if (errno == EINTR)
 				continue; /* Interrupted by signal, retry */
-			break;	  /* Other error, exit */
+			break;		  /* Other error, exit */
 		}
 
 		/* Read signal from pipe */

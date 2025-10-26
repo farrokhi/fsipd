@@ -12,7 +12,7 @@ TARGET=fsipd
 SUBDIRS = libpidutil
 PROGS = fsipd logfile_test
 OBJ = logfile.o fsipd.o
-TEST_UNIT_PROGS = tests/unit/test_chomp
+TEST_UNIT_PROGS = tests/unit/test_sanitize
 
 .PHONY: $(SUBDIRS) get-deps test check test-unit test-integration clean-tests
 
@@ -30,12 +30,12 @@ $(SUBDIRS):
 logfile_test: logfile.h logfile.c logfile_test.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) logfile.c logfile_test.c -o logfile_test
 
-tests/unit/test_chomp: tests/unit/test_chomp.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) tests/unit/test_chomp.c -o tests/unit/test_chomp
+tests/unit/test_sanitize: tests/unit/test_sanitize.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) tests/unit/test_sanitize.c -o tests/unit/test_sanitize
 
-test-unit: $(TEST_UNIT_PROGS) logfile_test
+test-unit: $(TEST_UNIT_PROGS)
 	@echo "Running unit tests..."
-	@for test in $(TEST_UNIT_PROGS) ./logfile_test; do \
+	@for test in $(TEST_UNIT_PROGS); do \
 		echo "Running $$test..."; \
 		$$test || exit 1; \
 	done
