@@ -45,7 +45,8 @@ log_open(const char *path, mode_t mode)
 	int	    fd;
 
 	if (path == NULL) {
-		asprintf(&filename, "%s/%s.log", LOGPATH, _PROGNAME);
+		if (asprintf(&filename, "%s/%s.log", LOGPATH, _PROGNAME) == -1)
+			return (NULL);
 	} else {
 		filename = (char *)path;
 	}
@@ -131,13 +132,19 @@ log_printf(const log_t *log, const char *format, ...)
 	va_list args;
 	char   *message;
 	char   *newline = "\n";
+	ssize_t ret;
 
 	va_start(args, format);
-	vasprintf(&message, format, args);
+	if (vasprintf(&message, format, args) == -1) {
+		va_end(args);
+		return;
+	}
 	va_end(args);
 
-	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
-	write(log->fd, newline, sizeof(*newline));
+	ret = write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
+	(void)ret;
+	ret = write(log->fd, newline, 1);
+	(void)ret;
 
 	free(message);
 }
@@ -158,18 +165,25 @@ log_tsprintf(const log_t *log, const char *format, ...)
 	struct tm *ltime;
 	size_t	   tsize;
 	char	  *newline = "\n";
+	ssize_t	   ret;
 
 	va_start(args, format);
-	vasprintf(&message, format, args);
+	if (vasprintf(&message, format, args) == -1) {
+		va_end(args);
+		return;
+	}
 	va_end(args);
 
 	now   = time(NULL);
 	ltime = localtime(&now);
 	tsize = strftime(s_time, sizeof(s_time), "%Y-%m-%d %T %Z - ", ltime);
 
-	write(log->fd, s_time, tsize);
-	write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
-	write(log->fd, newline, sizeof(*newline));
+	ret = write(log->fd, s_time, tsize);
+	(void)ret;
+	ret = write(log->fd, message, strnlen(message, MAX_MSG_SIZE));
+	(void)ret;
+	ret = write(log->fd, newline, 1);
+	(void)ret;
 
 	free(message);
 }

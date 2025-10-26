@@ -429,8 +429,11 @@ init_logger()
 			syslog_pri = LOG_USER | LOG_NOTICE | LOG_PID;
 	} else {
 		/* open a log file in current directory */
-		if (logfilename == NULL)
+		if (logfilename == NULL) {
 			logfilename = strdup("fsipd.log");
+			if (logfilename == NULL)
+				err(EXIT_FAILURE, "Cannot allocate memory for log filename");
+		}
 		if ((lfh = log_open(logfilename, 0644)) == NULL)
 			err(EXIT_FAILURE, "Cannot open log file \"%s\"", logfilename);
 	}
@@ -603,9 +606,13 @@ main(int argc, char *argv[])
 			break;
 		case 'l':
 			logfilename = strdup(optarg);
+			if (logfilename == NULL)
+				err(EXIT_FAILURE, "Cannot allocate memory");
 			break;
 		case 'f':
 			pidfilename = strdup(optarg);
+			if (pidfilename == NULL)
+				err(EXIT_FAILURE, "Cannot allocate memory");
 			break;
 		case 'h':
 			usage();
