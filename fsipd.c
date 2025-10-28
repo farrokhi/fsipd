@@ -123,7 +123,7 @@ sanitize_message(char *s)
 
 	/* Trim leading spaces */
 	start = s;
-	while (isspace(*start))
+	while (isspace((unsigned char)*start))
 		start++;
 
 	/* Shift string left if needed */
@@ -136,7 +136,7 @@ sanitize_message(char *s)
 
 	/* Trim trailing spaces */
 	len = strlen(s);
-	while (len > 0 && isspace(s[len - 1]))
+	while (len > 0 && isspace((unsigned char)s[len - 1]))
 		len--;
 	s[len] = '\0';
 }
@@ -685,7 +685,7 @@ decode(char *name, const CODE *codetab)
 {
 	const CODE *c;
 
-	if (isdigit(*name))
+	if (isdigit((unsigned char)*name))
 		return (atoi(name));
 
 	for (c = codetab; c->c_name; c++)
