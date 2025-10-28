@@ -76,33 +76,6 @@ int		    t6_sockfd, u6_sockfd;
 #endif /* PF_INET6 */
 
 /*
- * trim string from whitespace characters
- */
-size_t
-chomp(char *s)
-{
-	int i;
-
-	/* trim leading spaces */
-	while (isspace(*s))
-		s++;
-
-	/* All spaces? */
-	if (*s == 0)
-		return 0;
-
-	/* trim trailing spaces */
-	i = strlen(s);
-
-	while ((i > 0) && (isspace(s[i - 1])))
-		i--;
-
-	s[i] = '\0';
-
-	return i;
-}
-
-/*
  * Sanitize message for CSV output
  * Replaces newlines, carriage returns, and control characters with spaces
  * Then trims leading and trailing whitespace
